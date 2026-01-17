@@ -1,9 +1,13 @@
+<<<<<<< HEAD
 /**
  * FlowState Content Script
  *
  * Injects a floating button and sidebar for accessibility assistance.
  * Uses iframe isolation to prevent conflicts with host page styles.
  */
+=======
+import { initTracker } from './tracker.ts';
+>>>>>>> 2ba268c (added OpenRouter connection)
 
 import { parseTextContent, parseActions } from "./parse";
 import type { ReadabilityType, ParsedActions, ActionItem } from "./parse";
