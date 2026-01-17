@@ -90,7 +90,7 @@ function App() {
     return(
         <div className="container">
             <div className="header">
-                <h1>🧭 Pathfinder</h1>
+                <h1>Flowstate</h1>
                 <p className="tagline">Adaptive Accessibility Browser</p>
             </div>
 
