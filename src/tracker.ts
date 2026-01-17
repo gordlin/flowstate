@@ -17,7 +17,7 @@ interface ClickEntry {
 
 interface ScrollEntry {
     time: number;
-    position: number;
+    direction: number;
 }
 
 interface Features {
@@ -52,12 +52,14 @@ export function initTracker() {
             if (hoverElement && hoverStart) {
                 const duration = Date.now() - hoverStart;
                 if (duration > 2000) {
-                    events.push({
+                    const evt = {
                         type: 'dwell',
                         element: getSelector(hoverElement),
                         duration: duration,
                         timestamp: Date.now()
-                    });
+                    };
+                    events.push(evt);
+                    console.log('[Flowstate] dwell', evt.element, `${(duration/1000).toFixed(1)}s`);
                 }
             }
             hoverElement = element;
@@ -75,30 +77,34 @@ export function initTracker() {
             clickHistory.shift();
         }
 
+        const selector = getSelector(element);
         events.push({
             type: 'click',
-            element: getSelector(element),
+            element: selector,
             x: event.clientX,
             y: event.clientY,
             timestamp: now
         });
+        console.log('[Flowstate] click', selector);
 
         if (clickHistory.length >= 3) {
             events.push({
                 type: 'rage_click',
-                element: getSelector(element),
+                element: selector,
                 count: clickHistory.length,
                 timestamp: now
             });
+            console.log('[Flowstate] rage_click', selector, `${clickHistory.length} clicks`);
             clickHistory = [];
         }
 
         if (!isInteractive(element)) {
             events.push({
                 type: 'dead_click',
-                element: getSelector(element),
+                element: selector,
                 timestamp: now
             });
+            console.log('[Flowstate] dead_click', selector);
         }
     }
 
@@ -106,7 +112,7 @@ export function initTracker() {
         const scrollY = window.pageYOffset || document.documentElement.scrollTop;
         const now = Date.now();
 
-        scrollHistory.push({ time: now, position: scrollY });
+        scrollHistory.push({ time: now, direction: scrollY });
 
         while (scrollHistory.length > 0 && now - scrollHistory[0].time > 5000) {
             scrollHistory.shift();
@@ -115,10 +121,10 @@ export function initTracker() {
         if (scrollY < lastScrollY && scrollHistory.length >= 2) {
             let reversals = 0;
             for (let i = 1; i < scrollHistory.length; i++) {
-                const prev = scrollHistory[i - 1].position;
-                const curr = scrollHistory[i].position;
-                if ((prev < curr && scrollHistory[i - 1].position > scrollHistory[i].position) ||
-                    (prev > curr && scrollHistory[i - 1].position < scrollHistory[i].position)) {
+                const prev = scrollHistory[i - 1].direction;
+                const curr = scrollHistory[i].direction;
+                if ((prev < curr && scrollHistory[i - 1].direction > scrollHistory[i].direction) ||
+                    (prev > curr && scrollHistory[i - 1].direction < scrollHistory[i].direction)) {
                     reversals++;
                 }
             }
@@ -130,6 +136,7 @@ export function initTracker() {
                     to: scrollY,
                     timestamp: now
                 });
+                console.log('[Flowstate] scroll_reversal', `${lastScrollY} → ${scrollY}`);
             }
         }
 
