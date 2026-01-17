@@ -1,4 +1,4 @@
-import { initTracker } from './tracker';
+import { initTracker } from './tracker.ts';
 
 initTracker();
 
