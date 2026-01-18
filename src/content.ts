@@ -1,13 +1,9 @@
-/**
- * FlowState Content Script
- *
- * Injects a floating button and sidebar for accessibility assistance.
- * Uses iframe isolation to prevent conflicts with host page styles.
- */
+console.log("Pathfinder content script running!");
 
-import { parseTextContent, parseActions } from "./parse";
-import type { ReadabilityType, ParsedActions, ActionItem } from "./parse";
+let splitScreenActive = false;
+let splitContainer: HTMLDivElement | null = null;
 
+<<<<<<< HEAD
 // Constants
 const SIDEBAR_WIDTH = 420;
 const BUTTON_SIZE = 56;
@@ -19,6 +15,269 @@ let sidebarFrame: HTMLIFrameElement | null = null;
 let floatingButton: HTMLElement | null = null;
 let pageWrapper: HTMLElement | null = null;
 let lastParsedActions: ParsedActions | null = null;
+
+function injectSplitScreenStyles() {
+  const style = document.createElement('style');
+  style.setAttribute('data-pathfinder', 'split-screen');
+  style.textContent = `
+=======
+function injectSplitScreenStyles() {
+    const style = document.createElement('style');
+    style.setAttribute('data-pathfinder', 'split-screen');
+    style.textContent = `
+>>>>>>> parent of 23a8a9c (Merge pull request #8 from gordlin/main)
+        .pathfinder-split-container {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 999999 !important;
+            display: flex !important;
+            background: white !important;
+            pointer-events: none !important;
+<<<<<<< HEAD
+        }
+        
+        /* Original side - 50% width, resizable */
+        .pathfinder-original-side {
+            width: 50% ;  //removed important
+            height: 100vh !important;
+            transition: width 0.1s ease;
+            overflow: auto !important;
+            background: white !important;
+            pointer-events: auto !important;
+            resize: horizontal !important;
+            min-width: 20% !important;
+            max-width: 80% !important;
+            overflow-x: auto !important;
+        }
+        
+        /* Resize handle visual feedback */
+        .pathfinder-original-side:active {
+            cursor: col-resize !important;
+        }
+        
+        /* Interpreted side - takes remaining space */
+        .pathfinder-interpreted-side {
+            flex: 1 !important;
+            height: 100vh !important;
+            background: #f5f5f5 !important;
+            border-left: 2px solid #ccc !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: #666 !important;
+            font-family: Arial, sans-serif !important;
+            pointer-events: auto !important;
+            padding: 20px !important;
+            box-sizing: border-box !important;
+            min-width: 20% !important;
+        }
+        
+        .pathfinder-page-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: rgba(0, 0, 0, 0.01) !important;
+            z-index: 999998 !important;
+            pointer-events: auto !important;
+            display: none !important;
+        }
+        
+        .pathfinder-interpreted-side h3 {
+            color: #333 !important;
+            margin-bottom: 10px !important;
+        }
+        
+        .pathfinder-interpreted-side p {
+            text-align: center !important;
+            max-width: 300px !important;
+        }
+        
+        .inline-close-btn {
+            background: #ff4757 !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 16px !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            margin-top: 20px !important;
+        }
+        
+        .inline-close-btn:hover {
+            background: #ff3742 !important;
+        }
+        
+        /* Prevent text selection during resize */
+        .pathfinder-split-container * {
+            user-select: none !important;
+        }
+        
+        .pathfinder-original-side * {
+            user-select: auto !important;
+        }
+    `;
+  document.head.appendChild(style);
+}
+
+function createSplitScreen() {
+  if (isSidebarOpen) return;
+
+  // Inject styles if not already injected
+  if (!document.querySelector('style[data-pathfinder="split-screen"]')) {
+    injectSplitScreenStyles();
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'pathfinder-page-overlay';
+  overlay.style.display = 'block';
+  overlay.setAttribute('data-pathfinder', 'overlay');
+
+
+
+  // Create split container
+  const splitContainer = document.createElement('iframe');
+  splitContainer.id = 'flowstate-split-screen';
+  splitContainer.className = 'pathfinder-'
+  });
+
+  // Add resize functionality
+  addResizeFunctionality(originalSide, interpretedSide);
+
+  // Assemble the split screen
+  splitContainer.appendChild(originalSide);
+  splitContainer.appendChild(interpretedSide);
+
+  // Replace the entire page with our split screen
+  document.body.innerHTML = '';
+  document.body.appendChild(overlay);
+  document.body.appendChild(splitContainer);
+
+  splitScreenActive = true; // UNCOMMENTED: Set to true
+  console.log("Split Screen activated - 50/50 resizable");
+}
+
+function addResizeFunctionality(originalSide: HTMLElement, interpretedSide: HTMLElement) {
+  let isResizing = false;
+  let startX: number;
+  let startLeftWidth: number;
+
+  const resizeHandle = document.createElement('div');
+  Object.assign(resizeHandle.style, {
+    width: '4px',
+    height: '100%',
+    backgroundColor: '#ccc',
+    cursor: 'col-resize',
+    position: 'absolute',
+    left: '50%',
+    top: '0',
+    zIndex: '1000000',
+    transform: 'translateX(-50%)'
+  });
+
+  //add handle to the container
+  const container = originalSide.parentElement;
+  if(container){
+    container.style.position = 'relative';
+    container.appendChild(resizeHandle);
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isResizing) {return;}
+
+    const dx = e.clientX - startX;
+    const containerWidth = container?.offsetWidth || window.innerWidth;
+
+    //get new wdith
+    const newLeftWidth = Math.max(
+        200,
+        Math.min(
+            containerWidth - 200,
+            startLeftWidth + dx)
+    );
+
+
+    originalSide.style.width = `${newLeftWidth}px`;
+
+    interpretedSide.style.width = '';
+    interpretedSide.style.flex = '1';
+
+    resizeHandle.style.left = `${newLeftWidth}px`;
+
+    e.preventDefault();
+  }
+
+  //stop resizing
+  const handleMouseUp = () => {
+    if(!isResizing){return;}
+
+    isResizing = false;
+
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp)
+  }
+
+  resizeHandle.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    startX = e.clientX;
+    startLeftWidth = originalSide.offsetWidth;
+
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+
+    //add listeners for move and up
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  //mouse move to handle resizing
+
+
+
+  // resizeHandle.addEventListener('mousedown', () => {
+  //     document.addEventListener('mousemove', handleMouseMove);
+  //     document.addEventListener('mouseup', handleMouseUp);
+  // });
+
+  const borderResizeArea = document.createElement('div');
+  Object.assign(borderResizeArea.style, {
+    position: 'absolute',
+    right: '-5px',
+    top: '0',
+    width: '10px',
+    height: '100%',
+    cursor: 'col-resize',
+    zIndex: '999999'
+  })
+
+  originalSide.style.position = 'relative';
+  originalSide.appendChild(borderResizeArea);
+
+  //border area also need to trigger resize
+  borderResizeArea.addEventListener('mousedown', (e) => {
+    resizeHandle.dispatchEvent(new MouseEvent('mousedown', e));
+  })
+
+  return () => {
+    resizeHandle.remove();
+    borderResizeArea.remove();
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+}
+
 
 /**
  * Creates an isolated style element that won't be affected by page styles
@@ -565,537 +824,353 @@ function setupIframeEventListeners(iframe: HTMLIFrameElement) {
         if (content) {
           content.style.display =
             content.style.display === "none" ? "block" : "none";
+=======
+>>>>>>> parent of 23a8a9c (Merge pull request #8 from gordlin/main)
         }
-      }
-    }
-  });
-
-  console.log("[FlowState] Iframe event listeners set up");
-}
-
-/**
- * Opens the sidebar with animation
- */
-function openSidebar() {
-  if (isSidebarOpen) return;
-
-  if (!sidebarFrame) {
-    createSidebar();
-  }
-
-  wrapPageContent();
-
-  requestAnimationFrame(() => {
-    if (sidebarFrame) {
-      sidebarFrame.style.right = "0px";
-    }
-    if (pageWrapper) {
-      pageWrapper.style.marginRight = `${SIDEBAR_WIDTH}px`;
-    }
-    if (floatingButton) {
-      floatingButton.style.right = `${SIDEBAR_WIDTH + 24}px`;
-    }
-  });
-
-  isSidebarOpen = true;
-  runAnalysis();
-}
-
-/**
- * Closes the sidebar with animation
- */
-function closeSidebar() {
-  if (!isSidebarOpen) return;
-
-  if (sidebarFrame) {
-    sidebarFrame.style.right = `-${SIDEBAR_WIDTH}px`;
-  }
-
-  if (pageWrapper) {
-    pageWrapper.style.marginRight = "0px";
-  }
-
-  if (floatingButton) {
-    floatingButton.style.right = "24px";
-  }
-
-  isSidebarOpen = false;
-
-  setTimeout(() => {
-    if (!isSidebarOpen && sidebarFrame) {
-      sidebarFrame.remove();
-      sidebarFrame = null;
-    }
-    unwrapPageContent();
-  }, ANIMATION_DURATION);
-}
-
-/**
- * Toggles sidebar open/closed
- */
-function toggleSidebar() {
-  if (isSidebarOpen) {
-    closeSidebar();
-  } else {
-    openSidebar();
-  }
-}
-
-/**
- * Wraps page content to enable smooth margin animation
- */
-function wrapPageContent() {
-  if (pageWrapper) return;
-
-  document.body.style.transition = `margin-right ${ANIMATION_DURATION}ms ease`;
-  document.body.style.marginRight = "0px";
-  document.documentElement.style.overflow = "auto";
-
-  pageWrapper = document.body;
-}
-
-/**
- * Removes page content wrapper
- */
-function unwrapPageContent() {
-  if (pageWrapper) {
-    pageWrapper.style.transition = "";
-    pageWrapper.style.marginRight = "";
-    pageWrapper = null;
-  }
-}
-
-/**
- * Updates sidebar content and re-attaches event listeners
- */
-function updateSidebarContent(html: string) {
-  if (!sidebarFrame) return;
-
-  const iframeDoc =
-    sidebarFrame.contentDocument || sidebarFrame.contentWindow?.document;
-  const contentEl = iframeDoc?.getElementById("sidebar-content");
-
-  if (contentEl) {
-    contentEl.innerHTML = html;
-    // Event listeners are already set up via delegation, no need to reattach
-  }
-}
-
-/**
- * Escapes HTML for safe display
- */
-function escapeHtml(text: string): string {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-/**
- * Formats the summary as HTML
- */
-function formatSummaryHTML(summary: string): string {
-  let html = escapeHtml(summary);
-
-  // Headers
-  html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
-  html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
-
-  // Bold
-  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-
-  // Blockquotes
-  html = html.replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>");
-
-  // List items
-  html = html.replace(/^• (.+)$/gm, "<li>$1</li>");
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>");
-
-  // Paragraphs
-  html = html.replace(/^([^<\n].+)$/gm, "<p>$1</p>");
-
-  // Clean up
-  html = html.replace(/<p><\/p>/g, "");
-
-  return html;
-}
-
-/**
- * Generates unique selector for an element
- */
-function generateSelector(el: Element): string {
-  if (el.id) return `#${CSS.escape(el.id)}`;
-
-  const tag = el.tagName.toLowerCase();
-  const classes = Array.from(el.classList)
-    .slice(0, 2)
-    .map((c) => `.${CSS.escape(c)}`)
-    .join("");
-
-  if (classes) return `${tag}${classes}`;
-
-  // Fallback to nth-child
-  const parent = el.parentElement;
-  if (parent) {
-    const siblings = Array.from(parent.children).filter(
-      (c) => c.tagName === el.tagName,
-    );
-    const index = siblings.indexOf(el) + 1;
-    return `${tag}:nth-of-type(${index})`;
-  }
-
-  return tag;
-}
-
-/**
- * Renders the CTAs section
- */
-function renderCTAsSection(actions: ParsedActions | null): string {
-  if (!actions) return "";
-
-  const { primaryActions, actions: allActions } = actions;
-
-  // Get primary and some secondary actions
-  const ctasToShow = [
-    ...primaryActions,
-    ...allActions
-      .filter(
-        (a) => a.importance !== "primary" && a.importance !== "navigation",
-      )
-      .slice(0, 5),
-  ].slice(0, 10);
-
-  if (ctasToShow.length === 0) return "";
-
-  const ctaItems = ctasToShow
-    .map((action) => {
-      const isPrimary = action.importance === "primary";
-      const ctaClass = isPrimary ? "primary-cta" : "secondary-cta";
-
-      // Try to find the element and get a selector
-      let selector = "";
-      try {
-        const elements = document.querySelectorAll(
-          action.type === "button"
-            ? 'button, [role="button"], input[type="submit"]'
-            : action.type === "link"
-              ? "a"
-              : "*",
-        );
-        for (const el of elements) {
-          if (el.textContent?.trim().includes(action.label.slice(0, 20))) {
-            selector = generateSelector(el);
-            break;
-          }
+        
+        /* Original side - 50% width, resizable */
+        .pathfinder-original-side {
+            width: 50% ;  //removed important
+            height: 100vh !important;
+            transition: width 0.1s ease;
+            overflow: auto !important;
+            background: white !important;
+            pointer-events: auto !important;
+            resize: horizontal !important;
+            min-width: 20% !important;
+            max-width: 80% !important;
+            overflow-x: auto !important;
         }
-      } catch (e) {
-        // Selector generation failed, skip
-      }
-
-      const dataAttrs = selector
-        ? `data-flowstate-action="scroll-to" data-flowstate-selector="${escapeHtml(selector)}"`
-        : "";
-
-      return `
-      <div class="cta-item ${ctaClass}" ${dataAttrs} style="cursor: ${selector ? "pointer" : "default"}">
-        <div class="cta-label">${escapeHtml(action.label)}</div>
-        <div class="cta-type">${action.type}${action.disabled ? " • disabled" : ""}</div>
-        ${selector ? '<div class="cta-hint">Click to scroll to this element</div>' : ""}
-      </div>
+        
+        /* Resize handle visual feedback */
+        .pathfinder-original-side:active {
+            cursor: col-resize !important;
+        }
+        
+        /* Interpreted side - takes remaining space */
+        .pathfinder-interpreted-side {
+            flex: 1 !important;
+            height: 100vh !important;
+            background: #f5f5f5 !important;
+            border-left: 2px solid #ccc !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: #666 !important;
+            font-family: Arial, sans-serif !important;
+            pointer-events: auto !important;
+            padding: 20px !important;
+            box-sizing: border-box !important;
+            min-width: 20% !important;
+        }
+        
+        .pathfinder-page-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: rgba(0, 0, 0, 0.01) !important;
+            z-index: 999998 !important;
+            pointer-events: auto !important;
+            display: none !important;
+        }
+        
+        .pathfinder-interpreted-side h3 {
+            color: #333 !important;
+            margin-bottom: 10px !important;
+        }
+        
+        .pathfinder-interpreted-side p {
+            text-align: center !important;
+            max-width: 300px !important;
+        }
+        
+        .inline-close-btn {
+            background: #ff4757 !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 16px !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            margin-top: 20px !important;
+        }
+        
+        .inline-close-btn:hover {
+            background: #ff3742 !important;
+        }
+        
+        /* Prevent text selection during resize */
+        .pathfinder-split-container * {
+            user-select: none !important;
+        }
+        
+        .pathfinder-original-side * {
+            user-select: auto !important;
+        }
     `;
-    })
-    .join("");
-
-  return `
-    <div class="cta-section">
-      <div class="cta-section-title">
-        🎯 Actions on This Page
-      </div>
-      ${ctaItems}
-    </div>
-  `;
+    document.head.appendChild(style);
 }
 
-/**
- * Scrolls to and highlights an element
- */
-function scrollToElement(selector: string) {
-  try {
-    const el = document.querySelector(selector);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+function createSplitScreen() {
+    if (splitScreenActive) return;
 
-      // Highlight briefly
-      const originalOutline = (el as HTMLElement).style.outline;
-      const originalTransition = (el as HTMLElement).style.transition;
-
-      (el as HTMLElement).style.transition = "outline 0.3s ease";
-      (el as HTMLElement).style.outline = "3px solid #6366f1";
-
-      setTimeout(() => {
-        (el as HTMLElement).style.outline = originalOutline;
-        setTimeout(() => {
-          (el as HTMLElement).style.transition = originalTransition;
-        }, 300);
-      }, 2000);
-    }
-  } catch (e) {
-    console.error("[FlowState] Failed to scroll to element:", e);
-  }
-}
-
-/**
- * Runs the page analysis with retry logic
- */
-async function runAnalysis(retryCount = 0) {
-  const MAX_RETRIES = 2;
-
-  updateSidebarContent(`
-    <div class="status-card loading">
-      <div class="spinner"></div>
-      <div class="status-text" id="status-text">Analyzing page structure...</div>
-    </div>
-  `);
-
-  try {
-    // Clone document for parsing
-    const docClone = document.cloneNode(true) as Document;
-
-    // Update status
-    const updateStatus = (text: string) => {
-      if (!sidebarFrame) return;
-      const statusEl =
-        sidebarFrame.contentDocument?.getElementById("status-text");
-      if (statusEl) statusEl.textContent = text;
-    };
-
-    updateStatus("Extracting page content...");
-
-    const pageContent = parseTextContent(docClone as unknown as HTMLDocument);
-    const parsedActions = parseActions(document as unknown as HTMLDocument);
-    lastParsedActions = parsedActions;
-
-    if (!pageContent) {
-      throw new Error("Failed to parse page content");
+    // Inject styles if not already injected
+    if (!document.querySelector('style[data-pathfinder="split-screen"]')) {
+        injectSplitScreenStyles();
     }
 
-    // Show initial parse results
-    let parseResultsHTML = '<div class="parse-results">';
+    const overlay = document.createElement('div');
+    overlay.className = 'pathfinder-page-overlay';
+    overlay.style.display = 'block';
+    overlay.setAttribute('data-pathfinder', 'overlay');
 
-    parseResultsHTML += `
-      <div class="parse-section">
-        <div class="parse-section-title">📄 Page Info</div>
-        <div class="action-item">
-          <div class="label">${escapeHtml(pageContent.title || "Untitled")}</div>
-          <div class="meta">${pageContent.length || 0} characters extracted</div>
-        </div>
-      </div>
+    // Create split container
+    splitContainer = document.createElement('div');
+    splitContainer.className = 'pathfinder-split-container';
+    splitContainer.setAttribute('data-pathfinder', 'split-container');
+
+    // Create left side (original content)
+    const originalSide = document.createElement('div');
+    originalSide.className = 'pathfinder-original-side'; //  FIXED: Correct class name
+    originalSide.setAttribute('data-pathfinder', 'original-side');
+
+    // Clone the original body content
+    const bodyClone = document.body.cloneNode(true) as HTMLElement;
+
+    // Remove any existing Pathfinder elements from the clone
+    const existingContainers = bodyClone.querySelectorAll('[data-pathfinder]');
+    existingContainers.forEach(el => el.remove());
+
+    // Add the cloned content to the left side
+    originalSide.appendChild(bodyClone);
+
+    // Create right side (interpreted content)
+    const interpretedSide = document.createElement('div');
+    interpretedSide.className = 'pathfinder-interpreted-side';
+    interpretedSide.setAttribute('data-pathfinder', 'interpreted-side');
+    interpretedSide.innerHTML = `
+        <h3>Pathfinder Panel</h3>
+        <p>This area will show the simplified content for the given web page</p>
+        <button class="inline-close-btn">Exit Split View</button>
     `;
 
-    if (parsedActions && parsedActions.primaryActions.length > 0) {
-      parseResultsHTML += `
-        <div class="parse-section">
-          <div class="parse-section-title">🎯 Primary Actions Found (${parsedActions.primaryActions.length})</div>
-          ${parsedActions.primaryActions
-            .slice(0, 3)
-            .map(
-              (a) => `
-            <div class="action-item">
-              <div class="label">${escapeHtml(a.label)}</div>
-              <div class="meta">
-                <span class="badge ${a.importance}">${a.importance}</span>
-                ${a.type}
-              </div>
-            </div>
-          `,
-            )
-            .join("")}
-        </div>
-      `;
-    }
-
-    parseResultsHTML += "</div>";
-
-    // Show loading for AI
-    updateSidebarContent(`
-      <div class="status-card loading">
-        <div class="spinner"></div>
-        <div class="status-text" id="status-text">Running AI agents...</div>
-        <div class="status-text" style="font-size: 12px; margin-top: 8px;">This may take 30-60 seconds</div>
-      </div>
-      ${parseResultsHTML}
-    `);
-
-    // Run AI summary
-    const { summarizePage } = await import("./agents");
-
-    const result = await summarizePage(pageContent, parsedActions, {
-      verbose: true,
-      onProgress: (node) => {
-        const agentNames: Record<string, string> = {
-          navigator: "📍 Navigator analyzing...",
-          security: "🛡️ Security check...",
-          compassionate_writer: "💝 Writing summary...",
-          technical_writer: "📋 Writing summary...",
-          arbiter: "⚖️ Merging results...",
-          guardian: "✅ Quality review...",
-          assemble: "📝 Finishing up...",
-        };
-        updateStatus(agentNames[node] || `Processing: ${node}`);
-      },
+    // Add event listener to the close button
+    interpretedSide.querySelector('.inline-close-btn')?.addEventListener('click', () => {
+        exitSplitScreen();
     });
 
-    // Check for critical errors
-    if (
-      !result.summary ||
-      result.summary.includes("Unable to generate summary")
-    ) {
-      throw new Error(result.errors.join("; ") || "Failed to generate summary");
-    }
+    // Add resize functionality
+    addResizeFunctionality(originalSide, interpretedSide);
 
-    // Render final result
-    const summaryHTML = formatSummaryHTML(result.summary);
-    const ctasHTML = renderCTAsSection(parsedActions);
+    // Assemble the split screen
+    splitContainer.appendChild(originalSide);
+    splitContainer.appendChild(interpretedSide);
 
-    let errorsHTML = "";
-    if (result.errors.length > 0) {
-      errorsHTML = `
-        <div class="error-card">
-          <div class="error-title">⚠️ Some issues occurred:</div>
-          <ul class="error-message" style="margin-left: 16px;">
-            ${result.errors
-              .slice(0, 3)
-              .map((e) => `<li>${escapeHtml(e)}</li>`)
-              .join("")}
-          </ul>
-        </div>
-      `;
-    }
+    // Replace the entire page with our split screen
+    document.body.innerHTML = '';
+    document.body.appendChild(overlay);
+    document.body.appendChild(splitContainer);
 
-    updateSidebarContent(`
-      ${errorsHTML}
-      <div class="summary-content">
-        ${summaryHTML}
-      </div>
-      ${ctasHTML}
-      <div class="agent-log">
-        <div class="agent-log-title" data-flowstate-action="toggle-log" style="cursor: pointer;">
-          📋 Agent Communication Log (${result.communicationLog.length} entries - click to expand)
-        </div>
-        <div class="agent-log-content" style="display: none;">
-          ${escapeHtml(result.formattedLog)}
-        </div>
-      </div>
-      <div class="action-buttons">
-        <button class="action-btn primary" data-flowstate-action="refresh">
-          🔄 Re-analyze
-        </button>
-        <button class="action-btn secondary" data-flowstate-action="close">
-          Close
-        </button>
-      </div>
-    `);
-  } catch (error) {
-    console.error("[FlowState] Analysis error:", error);
-
-    const errorMessage = String(error);
-    const isRetryable =
-      errorMessage.includes("fetch") ||
-      errorMessage.includes("network") ||
-      errorMessage.includes("timeout") ||
-      errorMessage.includes("API");
-
-    if (isRetryable && retryCount < MAX_RETRIES) {
-      updateSidebarContent(`
-        <div class="status-card loading">
-          <div class="spinner"></div>
-          <div class="status-text">Retrying... (attempt ${retryCount + 2}/${MAX_RETRIES + 1})</div>
-        </div>
-      `);
-
-      setTimeout(() => runAnalysis(retryCount + 1), 2000);
-      return;
-    }
-
-    // Show error with helpful message
-    let helpText = "";
-    if (errorMessage.includes("API") || errorMessage.includes("key")) {
-      helpText = `
-        <div class="retry-hint">
-          💡 Make sure your OpenRouter API key is valid and has credits.
-        </div>
-      `;
-    } else if (
-      errorMessage.includes("fetch") ||
-      errorMessage.includes("network")
-    ) {
-      helpText = `
-        <div class="retry-hint">
-          💡 Check your internet connection and try again.
-        </div>
-      `;
-    }
-
-    // Still show CTAs even if AI failed
-    const ctasHTML = renderCTAsSection(lastParsedActions);
-
-    updateSidebarContent(`
-      <div class="error-card">
-        <div class="error-title">❌ Analysis Failed</div>
-        <div class="error-message">${escapeHtml(errorMessage)}</div>
-        ${helpText}
-      </div>
-      ${
-        ctasHTML
-          ? `
-        <div style="margin-top: 16px;">
-          <p style="color: #94a3b8; margin-bottom: 12px;">We found these actions on the page:</p>
-          ${ctasHTML}
-        </div>
-      `
-          : ""
-      }
-      <div class="action-buttons">
-        <button class="action-btn primary" data-flowstate-action="refresh">
-          🔄 Try Again
-        </button>
-        <button class="action-btn secondary" data-flowstate-action="close">
-          Close
-        </button>
-      </div>
-    `);
-  }
+    splitScreenActive = true; // UNCOMMENTED: Set to true
+    console.log("Split Screen activated - 50/50 resizable");
 }
 
-/**
- * Handle messages from sidebar iframe (kept for potential future use)
- */
-function handleMessage(event: MessageEvent) {
-  // Check if this is a FlowState message
-  const { type, selector } = event.data || {};
+function addResizeFunctionality(originalSide: HTMLElement, interpretedSide: HTMLElement) {
+    let isResizing = false;
+    let startX: number;
+    let startLeftWidth: number;
 
-  if (!type || !type.startsWith("flowstate-")) return;
+    const resizeHandle = document.createElement('div');
+    Object.assign(resizeHandle.style, {
+        width: '4px',
+        height: '100%',
+        backgroundColor: '#ccc',
+        cursor: 'col-resize',
+        position: 'absolute',
+        left: '50%',
+        top: '0',
+        zIndex: '1000000',
+        transform: 'translateX(-50%)'
+    });
 
-  console.log("[FlowState] Received message:", type);
+    //add handle to the container
+    const container = originalSide.parentElement;
+    if(container){
+        container.style.position = 'relative';
+        container.appendChild(resizeHandle);
+    }
 
-  switch (type) {
-    case "flowstate-close":
-      console.log("[FlowState] Closing sidebar");
-      closeSidebar();
-      break;
-    case "flowstate-refresh":
-      console.log("[FlowState] Refreshing analysis");
-      runAnalysis();
-      break;
-    case "flowstate-scroll-to":
-      if (selector) {
-        scrollToElement(selector);
-      }
-      break;
-  }
+    const handleMouseMove = (e: MouseEvent) => {
+        if (!isResizing) {return;}
+
+        const dx = e.clientX - startX;
+        const containerWidth = container?.offsetWidth || window.innerWidth;
+
+        //get new wdith
+        const newLeftWidth = Math.max(
+            200,
+            Math.min(
+                containerWidth - 200,
+                startLeftWidth + dx)
+        );
+
+
+        originalSide.style.width = `${newLeftWidth}px`;
+
+        interpretedSide.style.width = '';
+        interpretedSide.style.flex = '1';
+
+        resizeHandle.style.left = `${newLeftWidth}px`;
+
+        e.preventDefault();
+    }
+
+    //stop resizing
+    const handleMouseUp = () => {
+        if(!isResizing){return;}
+
+        isResizing = false;
+
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.clientX;
+        startLeftWidth = originalSide.offsetWidth;
+
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'col-resize';
+
+        //add listeners for move and up
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    //mouse move to handle resizing
+
+
+
+        // resizeHandle.addEventListener('mousedown', () => {
+        //     document.addEventListener('mousemove', handleMouseMove);
+        //     document.addEventListener('mouseup', handleMouseUp);
+        // });
+
+        const borderResizeArea = document.createElement('div');
+        Object.assign(borderResizeArea.style, {
+            position: 'absolute',
+            right: '-5px',
+            top: '0',
+            width: '10px',
+            height: '100%',
+            cursor: 'col-resize',
+            zIndex: '999999'
+        })
+
+        originalSide.style.position = 'relative';
+        originalSide.appendChild(borderResizeArea);
+
+        //border area also need to trigger resize
+        borderResizeArea.addEventListener('mousedown', (e) => {
+            resizeHandle.dispatchEvent(new MouseEvent('mousedown', e));
+        })
+
+        return () => {
+            resizeHandle.remove();
+            borderResizeArea.remove();
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
 }
 
-// Initialize
-createFloatingButton();
+function exitSplitScreen() {
+    if (!splitScreenActive || !splitContainer) return;
 
-// Message listener
-window.addEventListener("message", handleMessage);
+    // Get the original side as HTMLElement
+    const originalSide = splitContainer.querySelector('.pathfinder-original-side');
+
+    if (originalSide instanceof HTMLElement && originalSide.children.length > 0) {
+        // The first child should be our cloned body
+        const clonedBody = originalSide.children[0] as HTMLElement;
+
+        // Clear current body
+        document.body.innerHTML = '';
+
+        // Move all children from cloned body to current body
+        while (clonedBody.children.length > 0) {
+            document.body.appendChild(clonedBody.children[0]);
+        }
+
+        // Copy body attributes
+        document.body.className = clonedBody.className;
+        document.body.setAttribute('style', clonedBody.getAttribute('style') || '');
+
+        // Copy any other attributes
+        for (const attr of clonedBody.attributes) {
+            if (attr.name !== 'class' && attr.name !== 'style') {
+                document.body.setAttribute(attr.name, attr.value);
+            }
+        }
+    } else {
+        // Fallback: reload the page
+        console.warn('Could not find original content, reloading page');
+        location.reload();
+        return;
+    }
+
+    // Clean up
+    splitContainer.remove();
+    document.querySelector('.pathfinder-page-overlay')?.remove();
+
+    splitContainer = null;
+    splitScreenActive = false;
+    console.log('Split Screen deactivated');
+}
+
+// Listen for messages from background or popup
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    console.log('Content script received message:', message.action);
+
+    if (message.action === 'activateSplitScreen') {
+        createSplitScreen();
+        sendResponse({ success: true });
+    } else if (message.action === 'deactivateSplitScreen') {
+        exitSplitScreen();
+        sendResponse({ success: true });
+    } else if (message.action === 'getSplitScreenStatus') {
+        sendResponse({ active: splitScreenActive });
+    }
+    return true;
+});
+
+// Debug helper (development only)
+if (import.meta.env?.DEV) {
+    console.log('Pathfinder debug mode enabled');
+    (window as any).Pathfinder = {
+        activateSplitScreen: createSplitScreen,
+        deactivateSplitScreen: exitSplitScreen,
+        isSplitScreenActive: () => splitScreenActive
+    };
+}
+// Also expose a global function for direct access
+// Instead, just add this for debugging:
+// if (process.env.NODE_ENV === 'development') {
+//     // Only expose in development mode
+//     window.Pathfinder = {
+//         activateSplitScreen: createSplitScreen,
+//         deactivateSplitScreen: exitSplitScreen,
+//         isSplitScreenActive: () => splitScreenActive
+//     };
+//     console.log('🚧 Pathfinder debug API enabled (dev mode only)');
+//     }

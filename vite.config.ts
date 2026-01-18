@@ -10,32 +10,16 @@ export default defineConfig({
       manifest,
       // Add these options for better TypeScript handling
       contentScripts: {
-        injectCss: true,
-      },
-    }),
+        injectCss: true
+      }
+    })
   ],
   build: {
-    target: "es2020",
+    target: 'es2020',
     rollupOptions: {
       input: {
         // Let CRXJS handle this automatically
-      },
-    },
-  },
-  resolve: {
-    alias: {
-      "node:async_hooks": "async_hooks",
-    },
-  },
-  optimizeDeps: {
-    esbuildOptions: {
-      define: {
-        global: "globalThis",
-      },
-    },
-  },
-  define: {
-    "process.env": {},
-    global: "globalThis",
-  },
+      }
+    }
+  }
 });

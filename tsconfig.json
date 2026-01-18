@@ -15,7 +15,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["chrome", "vite/client", "node"]
+    "types": ["chrome", "vite/client"]
   },
   "include": ["src"],
   "references": []  // Remove or empty array
