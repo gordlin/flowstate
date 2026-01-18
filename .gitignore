@@ -22,6 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+<<<<<<< HEAD
 
 demo
 secrets.ts
@@ -39,3 +40,5 @@ vite.config.js.timestamp-*
 # ESLint cache
 .eslintcache
 
+=======
+>>>>>>> b759861f6c509c2042cb7c8ed13a7a3c2f2d88b7
