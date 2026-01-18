@@ -21,12 +21,12 @@ interface Edge {
   condition?: RouteCondition;
 }
 
-// Graph definition
-interface GraphDefinition {
+// Graph definition (exported for type reference)
+export type GraphDefinition = {
   nodes: Map<string, AgentNode>;
   edges: Edge[];
   entryPoint: string;
-}
+};
 
 /**
  * StateGraph - Browser-compatible implementation of LangGraph patterns
@@ -205,8 +205,9 @@ export class CompiledGraph {
     const maxIterations = 50; // Safety limit
     let iterations = 0;
 
-    // Track which nodes have been executed in parallel groups
-    const parallelGroups = new Map<string, Set<string>>();
+    // Track which nodes have been executed in parallel groups (reserved for future use)
+    const _parallelGroups = new Map<string, Set<string>>();
+    void _parallelGroups; // Suppress unused warning
 
     while (queue.length > 0 && iterations < maxIterations) {
       iterations++;

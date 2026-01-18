@@ -34,7 +34,7 @@ export async function getApiKey(): Promise<string | null> {
   if (typeof chrome !== "undefined" && chrome.storage?.local) {
     try {
       const result = await chrome.storage.local.get(["openrouter_api_key"]);
-      if (result.openrouter_api_key) {
+      if (result.openrouter_api_key && typeof result.openrouter_api_key === "string") {
         return result.openrouter_api_key;
       }
     } catch {
@@ -49,8 +49,7 @@ export async function getApiKey(): Promise<string | null> {
   }
 
   // Hardcoded fallback for development
-  const devKey =
-    "";
+  const devKey = 'API_KEY';
   if (devKey && devKey.startsWith("sk-or-")) return devKey;
 
   return null;
