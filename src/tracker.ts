@@ -18,7 +18,7 @@ interface ScrollSample {
     position: number;
 }
 
-export interface Features {
+interface Features {
     events: TrackerEvent[];
     // Scanner signals
     avg_scroll_speed: number;
@@ -28,12 +28,6 @@ export interface Features {
     avg_dwell_time: number;
     long_dwell_count: number;     // dwells > 5s
     text_selection_count: number;
-}
-
-export interface Tracker {
-    getEvents: () => TrackerEvent[];
-    getFeatures: () => Features;
-    getEventLog: () => string;
 }
 
 export function initTracker() {
@@ -374,52 +368,8 @@ export function initTracker() {
         logEvent(`-----------------------`);
     }, 30000);
 
-    // Generate narrative log for LLM consumption
-    function getEventLog(): string {
-        const lines: string[] = [];
-
-        for (const event of events) {
-            const time = formatTime(event.timestamp);
-            let desc = '';
-
-            switch (event.type) {
-                case 'dwell':
-                    const dwellText = event.text ? `"${event.text.slice(0, 40)}${event.text.length > 40 ? '...' : ''}"` : event.elementType;
-                    desc = `User stopped at ${dwellText} for ${((event.duration || 0) / 1000).toFixed(1)}s.`;
-                    break;
-                case 'click':
-                    desc = `User clicked on ${event.elementType} element.`;
-                    break;
-                case 'rage_click':
-                    desc = `User rage-clicked on ${event.elementType} element (${event.count}x in 500ms).`;
-                    break;
-                case 'dead_click':
-                    desc = `User clicked on non-interactive ${event.elementType} element (dead click).`;
-                    break;
-                case 'scroll_reversal':
-                    desc = `User scrolled back (reversal from ${event.from?.toFixed(0)}px to ${event.to?.toFixed(0)}px).`;
-                    break;
-                case 'fast_scroll':
-                    desc = `User scrolled quickly (${((event.speed || 0) * 1000).toFixed(0)}px/s).`;
-                    break;
-                case 'text_selection':
-                    const selText = event.text || '';
-                    const selDesc = selText.split(/\s+/).length <= 3 ? `the word "${selText}"` : `"${selText.slice(0, 40)}..."`;
-                    desc = `User highlighted ${selDesc}.`;
-                    break;
-                default:
-                    desc = `${event.type} event on ${event.elementType}.`;
-            }
-
-            lines.push(`${time}: ${desc}`);
-        }
-
-        return lines.join('\n');
-    }
-
     return {
         getEvents: () => events,
-        getFeatures: getFeatures,
-        getEventLog: getEventLog
+        getFeatures: getFeatures
     };
 }

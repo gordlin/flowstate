@@ -88,12 +88,10 @@ export function createSummaryGraph(): ReturnType<StateGraph["compile"]> {
 function createInitialState(
   pageContent: ReadabilityType,
   parsedActions: ParsedActions | null,
-  customPrompt?: string,
 ): AgentState {
   return {
     pageContent,
     parsedActions,
-    customPrompt: customPrompt || '',  // Custom instructions from classifier
     identifiedCTAs: [],
     pageStructure: null,
     securityAnalysis: null,
@@ -116,7 +114,6 @@ export async function summarizePage(
   parsedActions: ParsedActions | null,
   options: {
     verbose?: boolean;
-    customPrompt?: string;  // Custom instructions from the classifier
     onProgress?: (node: string, state: AgentState) => void;
   } = {},
 ): Promise<{
@@ -126,7 +123,7 @@ export async function summarizePage(
   formattedLog: string;
 }> {
   const graph = createSummaryGraph();
-  const initialState = createInitialState(pageContent, parsedActions, options.customPrompt);
+  const initialState = createInitialState(pageContent, parsedActions);
 
   console.log("[FlowState] Starting multi-agent summarization...");
 
