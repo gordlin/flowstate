@@ -19,6 +19,135 @@ let sidebarFrame: HTMLIFrameElement | null = null;
 let floatingButton: HTMLElement | null = null;
 let pageWrapper: HTMLElement | null = null;
 let lastParsedActions: ParsedActions | null = null;
+const MIN_SIDEBAR_WIDTH = 300;
+const MAX_SIDEBAR_WIDTH = 800;
+let isResizing = false;
+let startX: number;
+let startWidth: number;
+let currentSidebarWidth = SIDEBAR_WIDTH
+
+let resizeCleanup: (() => void) | null = null;
+let resizeVar = 0;
+
+/**
+ * Adds resize functionality to the sidebar
+ */
+/**
+ * Adds resize functionality to the sidebar
+ */
+/**
+ * Adds resize functionality to the sidebar
+ */
+function addSidebarResizeFunctionality(sidebarFrame: HTMLIFrameElement) {
+  const MIN_WIDTH = 280;
+  const MAX_WIDTH = 800;
+
+  let isResizing = false;
+
+  const resizeHandle = document.createElement('div');
+  Object.assign(resizeHandle.style, {
+    position: 'fixed',
+    top: '0px',
+    width: '2px',
+    height: '100vh',
+    backgroundColor: '#334155',
+    opacity: '0.15',
+    cursor: 'col-resize',
+    zIndex: '2147483647',
+    pointerEvents: 'none',
+  });
+
+  const hoverArea = document.createElement('div');
+  Object.assign(hoverArea.style, {
+    position: 'fixed',
+    top: '0px',
+    width: '16px',
+    height: '100vh',
+    cursor: 'col-resize',
+    zIndex: '2147483647',
+    backgroundColor: 'transparent',
+    pointerEvents: 'auto',
+  });
+
+  function getSidebarLeftEdge(): number {
+    const rect = sidebarFrame.getBoundingClientRect();
+      // If layout is valid, trust it
+      if (rect.width > 0 && rect.left > 0) {
+        return rect.left;
+      }
+
+      // Fallback: right-docked sidebar
+      const computedWidth = parseFloat(
+          getComputedStyle(sidebarFrame).width || '0'
+      );
+
+      return window.innerWidth - computedWidth;
+
+  }
+
+  function updateResizeHandlePosition() {
+    const leftEdge = getSidebarLeftEdge();
+    // console.log("left edge " + leftEdge);
+    resizeHandle.style.left = `${leftEdge}px`;
+    hoverArea.style.left = `${leftEdge}px`;
+    hoverArea.style.width = '16px';
+  }
+
+  // --- Ensure correct position on first paint ---
+  requestAnimationFrame(updateResizeHandlePosition);
+  updateResizeHandlePosition();
+
+  document.body.appendChild(resizeHandle);
+  document.body.appendChild(hoverArea);
+
+  hoverArea.addEventListener('mouseenter', () => {
+    resizeHandle.style.opacity = '1';
+    document.body.style.cursor = 'col-resize';
+  });
+
+  hoverArea.addEventListener('mouseleave', () => {
+    if (!isResizing) {
+      resizeHandle.style.opacity = '0.15';
+      document.body.style.cursor = '';
+    }
+  });
+
+  hoverArea.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    isResizing = true;
+
+    sidebarFrame.style.pointerEvents = 'none';
+    document.body.style.cursor = 'col-resize';
+  });
+  function handleMouseMove(e: MouseEvent) {
+    if (!isResizing) return;
+
+    const newWidth = Math.min(
+        MAX_WIDTH,
+        Math.max(MIN_WIDTH, window.innerWidth - e.clientX)
+    );
+
+    sidebarFrame.style.width = `${newWidth}px`;
+    updateResizeHandlePosition();
+  }
+
+  function handleMouseUp() {
+    if (!isResizing) return;
+
+    isResizing = false;
+    sidebarFrame.style.pointerEvents = 'auto';
+
+    resizeHandle.style.opacity = '0.15';
+    document.body.style.cursor = '';
+  }
+
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
+  window.addEventListener('resize', updateResizeHandlePosition);
+
+
+}
+
 
 /**
  * Creates an isolated style element that won't be affected by page styles
@@ -493,8 +622,8 @@ function createSidebar(): HTMLIFrameElement {
   iframe.style.cssText = `
     position: fixed !important;
     top: 0 !important;
-    right: -${SIDEBAR_WIDTH}px !important;
-    width: ${SIDEBAR_WIDTH}px !important;
+    right: -${currentSidebarWidth}px !important;
+    width: ${currentSidebarWidth}px !important;
     height: 100vh !important;
     height: 100dvh !important;
     border: none !important;
@@ -514,7 +643,7 @@ function createSidebar(): HTMLIFrameElement {
     transform: none !important;
     clip: auto !important;
     overflow: visible !important;
-  `;
+`;
 
   document.body.appendChild(iframe);
 
@@ -587,13 +716,22 @@ function openSidebar() {
 
   requestAnimationFrame(() => {
     if (sidebarFrame) {
-      sidebarFrame.style.right = "0px";
+        sidebarFrame.style.width = `${currentSidebarWidth}px`
+        sidebarFrame.style.right = "0px";
+
+      // Store cleanup function
+      const newCleanup = addSidebarResizeFunctionality(sidebarFrame);
+      if (resizeCleanup) {
+        resizeCleanup(); // Clean up any previous resize handlers
+      }
+      resizeCleanup = newCleanup;
+
     }
     if (pageWrapper) {
-      pageWrapper.style.marginRight = `${SIDEBAR_WIDTH}px`;
+      pageWrapper.style.marginRight = `${currentSidebarWidth}px`;
     }
     if (floatingButton) {
-      floatingButton.style.right = `${SIDEBAR_WIDTH + 24}px`;
+      floatingButton.style.right = `${currentSidebarWidth + 24}px`;
     }
   });
 
@@ -604,11 +742,22 @@ function openSidebar() {
 /**
  * Closes the sidebar with animation
  */
+/**
+ * Closes the sidebar with animation
+ */
 function closeSidebar() {
   if (!isSidebarOpen) return;
 
+  // Store current width for timeout check
+  const closingWidth = currentSidebarWidth;
+
+  if(resizeCleanup){
+    resizeCleanup();
+    resizeCleanup = null;
+  }
+
   if (sidebarFrame) {
-    sidebarFrame.style.right = `-${SIDEBAR_WIDTH}px`;
+    sidebarFrame.style.right = `-${currentSidebarWidth}px`;
   }
 
   if (pageWrapper) {
@@ -622,11 +771,16 @@ function closeSidebar() {
   isSidebarOpen = false;
 
   setTimeout(() => {
-    if (!isSidebarOpen && sidebarFrame) {
+    // Check that sidebar is still closed and hasn't been reopened
+    if (!isSidebarOpen && sidebarFrame && sidebarFrame.style.right === `-${closingWidth}px`) {
       sidebarFrame.remove();
       sidebarFrame = null;
     }
     unwrapPageContent();
+    // Only reset to default width if sidebar was fully closed
+    if (!isSidebarOpen) {
+      currentSidebarWidth = SIDEBAR_WIDTH;
+    }
   }, ANIMATION_DURATION);
 }
 
