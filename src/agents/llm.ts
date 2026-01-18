@@ -49,7 +49,7 @@ export async function getApiKey(): Promise<string | null> {
   }
 
   // Hardcoded fallback for development
-  const devKey = 'KEY';
+  const devKey = 'API_KEY';
   if (devKey && devKey.startsWith("sk-or-")) return devKey;
 
   return null;

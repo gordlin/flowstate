@@ -1,4 +1,5 @@
 import { ActionItem, ParsedActions, ReadabilityType } from "../parse";
+import type { UserMetrics } from "./userProfile";
 
 // Communication log entry for tracking agent interactions
 export interface CommunicationEntry {
@@ -16,6 +17,7 @@ export interface AgentState {
   parsedActions: ParsedActions | null;
   rawHtml?: string;
   customPrompt?: string;  // Custom instructions from classifier agent
+  userProfile?: UserMetrics;  // Adaptive user metrics for personalization
 
   // Navigator output
   identifiedCTAs: IdentifiedCTA[];

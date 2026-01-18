@@ -2,6 +2,11 @@
   "manifest_version": 3,
   "name": "FlowState",
   "version": "0.1.0",
+  "icons": {
+    "16": "assets/flowstate16.png",
+    "48": "assets/flowstate48.png",
+    "128": "assets/flowstate128.png"
+  },
   "description": "AI-powered accessibility assistant that helps users understand complex web pages",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["<all_urls>"],
@@ -22,7 +27,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["dist/*"],
+      "resources": ["dist/*", "assets/flowstate16.png", "assets/flowstate48.png", "assets/flowstate128.png"], 
       "matches": ["<all_urls>"]
     }
   ]
