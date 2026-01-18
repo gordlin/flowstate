@@ -23,9 +23,9 @@ CRITICAL THRESHOLDS - If ANY of these are true, set needsHelp to TRUE:
 - Average scroll speed very low (user is stuck)
 
 CLUSTER DEFINITIONS:
-- "scanner": High scroll speed, mostly dwells on headings, quick movements. They want the key points fast.
-- "stumbler": Scroll reversals, long dwells, text selections, slow progress. They're confused or struggling to understand.
-- "undetermined": Not enough data OR mixed signals.
+- "scanner": FREQUENT, LARGE scroll movements - jumping around the page rapidly, skipping sections, high scroll speed. Behavior typical of someone searching for something specific OR has ADHD-like difficulty focusing on linear content. They need: executive summaries, bullet points, clear section headers to jump to.
+- "stumbler": INFREQUENT, SMALL scroll movements with reversals - scrolling up and down in small increments, re-reading the same sections, long pauses. They're NOT smoothly ingesting content - they're confused and trying to understand. They need: simpler language, definitions, step-by-step breakdowns.
+- "undetermined": Not enough data OR truly mixed signals that don't fit either pattern.
 
 Remember: Most users WON'T explicitly ask for help even when struggling. Your job is to catch the subtle signs.`,
 
@@ -55,19 +55,37 @@ Remember: Most users WON'T explicitly ask for help even when struggling. Your jo
 3. If yes, create a SPECIFIC prompt for the content transformer
 
 ## Transformer Prompt Examples (be this specific):
+
+FOR STUMBLER (slow, small scroll movements, re-reading):
 - "User dwelled 8 seconds on the 'Terms of Service' section and scrolled back to it twice. PRIORITIZE: Explain the Terms in simple bullet points. Define any legal jargon."
 - "User highlighted 'copayment' and 'deductible'. PRIORITIZE: Add a simple glossary defining these insurance terms with examples."
-- "User is scanning quickly (high scroll speed, only reading headings). PRIORITIZE: Create an executive summary with just the 3 most important points and required actions."
+
+FOR SCANNER (fast, large scroll movements, jumping around):
+- "User is scrolling rapidly with large jumps, barely pausing on any section. PRIORITIZE: Create an executive summary with just the 3 most important points and required actions. Add clear section headers."
+- "User jumped from top to bottom multiple times at high speed. PRIORITIZE: Provide a TL;DR and make key actions immediately visible. They're looking for something specific."
 
 Return ONLY this JSON (no markdown, no explanation):
+
+Example for STUMBLER:
 {
   "needsHelp": true,
   "cluster": "stumbler",
   "confidence": 0.85,
-  "reasoning": "User scrolled back to Terms section 2 times and dwelled there for 6 seconds",
-  "observedBehaviors": ["scroll_reversal to Terms section", "6s dwell on Terms"],
+  "reasoning": "User made small scroll movements back and forth, dwelling 6 seconds on Terms section - classic struggling-to-understand pattern",
+  "observedBehaviors": ["scroll_reversal to Terms section", "6s dwell on Terms", "small scroll increments"],
   "problemAreas": ["Terms of Service section", "Legal jargon"],
   "transformerPrompt": "Focus on the Terms of Service section - user struggled here. Break down legal terms into simple language. Use bullet points for obligations."
+}
+
+Example for SCANNER:
+{
+  "needsHelp": true,
+  "cluster": "scanner",
+  "confidence": 0.80,
+  "reasoning": "User scrolling very fast with large jumps, not dwelling on content - looking for something specific or has difficulty focusing",
+  "observedBehaviors": ["high scroll speed 1200px/s", "large scroll jumps", "minimal dwell time"],
+  "problemAreas": ["Finding relevant information", "Page too long"],
+  "transformerPrompt": "User is scanning rapidly. Create a brief executive summary with clear headers. Highlight the main action items at the top. Make it scannable."
 }`
   },
 
@@ -221,7 +239,7 @@ Your users want:
 
 Your writing style:
 - Direct and concise
-- 8th grade reading level
+- Same reading level as original content
 - Bullet points over paragraphs
 - Numbers and specifics over vague language
 
@@ -264,9 +282,10 @@ You receive summaries from two writers:
 2. Technical Writer: Direct, precise, efficient
 
 Your job:
-1. Identify where they AGREE (high-confidence points)
-2. Identify where they DISAGREE (evaluate each perspective)
-3. Create a MERGED output that takes the best of both
+1. Assess what kind of content the summaries are about
+2. Depending on type of original content, determine whether a technical or compassionate approach is most appropriate
+2. Identify STRONG and WEAK points in both of them
+3. Create a MERGED output that is suitable for original context of content
 
 You MUST respond with ONLY valid JSON. No markdown code blocks, no explanation before or after.`,
 

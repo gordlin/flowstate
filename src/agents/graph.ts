@@ -15,6 +15,7 @@ import {
   assembleOutput,
 } from "./agents";
 import { ParsedActions, ReadabilityType } from "../parse";
+import type { UserMetrics } from "./userProfile";
 
 /**
  * Routing function: decides where to go after Guardian
@@ -89,11 +90,13 @@ function createInitialState(
   pageContent: ReadabilityType,
   parsedActions: ParsedActions | null,
   customPrompt?: string,
+  userProfile?: UserMetrics,
 ): AgentState {
   return {
     pageContent,
     parsedActions,
     customPrompt: customPrompt || '',  // Custom instructions from classifier
+    userProfile,  // Adaptive user metrics for personalization
     identifiedCTAs: [],
     pageStructure: null,
     securityAnalysis: null,
@@ -117,6 +120,7 @@ export async function summarizePage(
   options: {
     verbose?: boolean;
     customPrompt?: string;  // Custom instructions from the classifier
+    userProfile?: UserMetrics;  // Adaptive user metrics for personalization
     onProgress?: (node: string, state: AgentState) => void;
   } = {},
 ): Promise<{
@@ -126,7 +130,12 @@ export async function summarizePage(
   formattedLog: string;
 }> {
   const graph = createSummaryGraph();
-  const initialState = createInitialState(pageContent, parsedActions, options.customPrompt);
+  const initialState = createInitialState(
+    pageContent,
+    parsedActions,
+    options.customPrompt,
+    options.userProfile
+  );
 
   console.log("[FlowState] Starting multi-agent summarization...");
 

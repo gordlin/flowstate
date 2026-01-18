@@ -194,16 +194,25 @@ function createTransformerPromptFromSignals(signals: string[], eventLog: string)
  * Create a fallback result when LLM fails but we detected obvious struggles
  */
 function createFallbackResult(signals: string[], features: Features): ClassificationResult {
-    const isScanner = features.avg_scroll_speed > 0.5 && features.heading_dwell_ratio > 0.5;
+    // Scanner: Fast, frequent scrolling with few reversals - jumping around looking for something
+    // Stumbler: Slower scrolling with reversals - small back-and-forth motions, struggling to understand
+    const hasHighScrollSpeed = features.avg_scroll_speed > 0.8;
+    const hasLowReversalRate = features.scroll_reversal_count <= 1;
+    const isScanner = hasHighScrollSpeed && hasLowReversalRate;
+
+    const cluster = isScanner ? 'scanner' : 'stumbler';
+    const transformerPrompt = isScanner
+        ? 'User is scanning rapidly, jumping around the page. Create an executive summary with clear section headers and bullet points. Make it easy to find specific information quickly.'
+        : 'User is struggling to understand, scrolling back and forth in small motions. Simplify the language, define terms, and break down complex topics into step-by-step explanations.';
 
     return {
         needsHelp: true,
-        cluster: isScanner ? 'scanner' : 'stumbler',
+        cluster,
         confidence: 0.7,
         reasoning: `Detected user struggles via behavioral signals: ${signals.join('; ')}`,
         observedBehaviors: signals,
         problemAreas: ['Content comprehension'],
-        transformerPrompt: 'User showed signs of struggling with the content. Simplify the language, break down complex topics, and highlight the most important information clearly.'
+        transformerPrompt
     };
 }
 

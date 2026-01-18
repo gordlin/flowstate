@@ -6,6 +6,7 @@
 import { callLLM, parseJsonResponse, Message } from "./llm";
 import { createLogEntry } from "./orchestrator";
 import { AGENT_PROMPTS } from "./prompts";
+import { generateMetricsForPrompt } from "./userProfile";
 import {
   AgentState,
   IdentifiedCTA,
@@ -257,6 +258,11 @@ export async function compassionateWriterAgent(
     ? `\n\n## IMPORTANT: Custom Instructions from Behavior Analysis\nThe following instructions are based on analyzing how this specific user interacted with the page. PRIORITIZE these instructions:\n\n${state.customPrompt}\n\n---\n`
     : '';
 
+  // Build user profile section for personalization
+  const userProfileSection = state.userProfile
+    ? `\n\n## ADAPTIVE USER PROFILE (Learn from this!)\n${generateMetricsForPrompt(state.userProfile)}\n\nAdjust your writing style based on this user's profile. This is critical for personalization.\n\n---\n`
+    : '';
+
   const humanPrompt = prompts.human
     .replace("{purpose}", state.pageStructure?.mainPurpose || "Unknown")
     .replace("{pageType}", state.pageStructure?.pageType || "unknown")
@@ -265,7 +271,7 @@ export async function compassionateWriterAgent(
       "{securityAnalysis}",
       JSON.stringify(state.securityAnalysis, null, 2),
     )
-    .replace("{content}", customInstructions + (state.pageContent.textContent || "").slice(0, 6000))
+    .replace("{content}", userProfileSection + customInstructions + (state.pageContent.textContent || "").slice(0, 6000))
     .replace("{ctas}", formatCTAs(state.identifiedCTAs));
 
   const logs: CommunicationEntry[] = [
@@ -361,6 +367,11 @@ export async function technicalWriterAgent(
     ? `\n\n## IMPORTANT: Custom Instructions from Behavior Analysis\nThe following instructions are based on analyzing how this specific user interacted with the page. PRIORITIZE these instructions:\n\n${state.customPrompt}\n\n---\n`
     : '';
 
+  // Build user profile section for personalization
+  const userProfileSection = state.userProfile
+    ? `\n\n## ADAPTIVE USER PROFILE (Learn from this!)\n${generateMetricsForPrompt(state.userProfile)}\n\nAdjust your writing style based on this user's profile. This is critical for personalization.\n\n---\n`
+    : '';
+
   const humanPrompt = prompts.human
     .replace("{purpose}", state.pageStructure?.mainPurpose || "Unknown")
     .replace("{pageType}", state.pageStructure?.pageType || "unknown")
@@ -369,7 +380,7 @@ export async function technicalWriterAgent(
       "{securityAnalysis}",
       JSON.stringify(state.securityAnalysis, null, 2),
     )
-    .replace("{content}", customInstructions + (state.pageContent.textContent || "").slice(0, 6000))
+    .replace("{content}", userProfileSection + customInstructions + (state.pageContent.textContent || "").slice(0, 6000))
     .replace("{ctas}", formatCTAs(state.identifiedCTAs));
 
   const logs: CommunicationEntry[] = [
@@ -813,7 +824,6 @@ export async function assembleOutput(state: AgentState): Promise<Partial<AgentSt
       (!securityAnalysis.darkPatterns || securityAnalysis.darkPatterns.length === 0)
     ) {
       // Show a friendly "all clear" message for safe pages
-      sections.push(`\n>No concerning elements found on this page.`);
     }
   }
 

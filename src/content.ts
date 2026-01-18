@@ -3,6 +3,12 @@ import { showButton } from './popup';
 import { classifyUser, type ClassificationResult } from './agents/classifier';
 import { parseTextContent, parseActions } from "./parse";
 import type { ParsedActions } from "./parse";
+import {
+  loadUserMetrics,
+  updateUserMetrics,
+  formatMetricsForLog,
+  type UserMetrics,
+} from './agents/userProfile';
 
 // Constants
 const SIDEBAR_WIDTH = 420;
@@ -28,6 +34,12 @@ let _currentClassification: ClassificationResult | null = null;
 let hasShownPopup = false;
 let classificationInterval: number | null = null;
 let isDyslexiaFontEnabled = false;
+
+// User profile for adaptive personalization
+let userMetrics: UserMetrics = loadUserMetrics();
+const sessionStartTime = Date.now();
+
+console.log('[FlowState] Loaded user profile:', formatMetricsForLog(userMetrics));
 
 try {
   isDyslexiaFontEnabled =
@@ -230,8 +242,7 @@ function showHelpPopup(classification: ClassificationResult) {
   } else if (classification.cluster === 'stumbler') {
     // Personalize based on problem areas
     if (classification.problemAreas.length > 0) {
-      const area = classification.problemAreas[0];
-      message = `Having trouble with "${area}"? Let me simplify it.`;
+      message = `Having trouble? Let me simplify it.`;
     } else {
       message = "This looks confusing. Want me to break it down?";
     }
@@ -726,6 +737,9 @@ function createIsolatedStyles(): string {
  */
 function createSidebarHTML(): string {
   const dyslexiaClass = isDyslexiaFontEnabled ? "dyslexia-font" : "";
+  
+  // Get the correct URL for the extension asset
+  const logoUrl = chrome.runtime.getURL("assets/flowstate128.png");
 
   return `
     <!DOCTYPE html>
@@ -739,7 +753,7 @@ function createSidebarHTML(): string {
       <div class="sidebar-container">
         <div class="sidebar-header">
           <div class="sidebar-title">
-            <span>🌊</span>
+            <img src="${logoUrl}" alt="FlowState" style="width: 24px; height: 24px;" />
             <span>FlowState</span>
           </div>
           <button class="close-btn" data-flowstate-action="close" title="Close sidebar">×</button>
@@ -1280,7 +1294,7 @@ async function runAnalysis(retryCount = 0) {
       <div class="status-card loading">
         <div class="spinner"></div>
         <div class="status-text" id="status-text">Running AI agents...</div>
-        <div class="status-text" style="font-size: 12px; margin-top: 8px;">This may take 30-60 seconds</div>
+        <div class="status-text" style="font-size: 12px; margin-top: 8px;">This may take 10-15 seconds</div>
       </div>
       ${parseResultsHTML}
     `);
@@ -1294,9 +1308,15 @@ async function runAnalysis(retryCount = 0) {
       console.log('[FlowState] Using custom transformer prompt:', transformerPrompt);
     }
 
+    // Update user metrics before analysis (captures this session's behavior)
+    const sessionDuration = Date.now() - sessionStartTime;
+    userMetrics = updateUserMetrics(userMetrics, tracker.getFeatures(), sessionDuration);
+    console.log('[FlowState] Updated user profile for personalization');
+
     const result = await summarizePage(pageContent, parsedActions, {
       verbose: true,
       customPrompt: transformerPrompt,  // Pass classifier's custom instructions
+      userProfile: userMetrics,  // Pass adaptive user metrics for personalization
       onProgress: (node) => {
         const agentNames: Record<string, string> = {
           navigator: "📍 Navigator analyzing...",
@@ -1352,7 +1372,7 @@ async function runAnalysis(retryCount = 0) {
         ${summaryHTML}
       </div>
       ${ctasHTML}
-      
+
       <div class="action-buttons">
         <button class="action-btn primary" data-flowstate-action="refresh">
           🔄 Re-analyze
@@ -1362,6 +1382,9 @@ async function runAnalysis(retryCount = 0) {
         </button>
       </div>
     `);
+
+    // Log current user metrics at the end of each summary
+    console.log('[FlowState] Summary complete. Current user metrics:', formatMetricsForLog(userMetrics));
   } catch (error) {
     console.error("[FlowState] Analysis error:", error);
 
