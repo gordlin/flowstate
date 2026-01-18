@@ -7,7 +7,11 @@
  */
 =======
 import { initTracker } from './tracker.ts';
+<<<<<<< HEAD
 >>>>>>> 2ba268c (added OpenRouter connection)
+=======
+import { showButton, hideButton } from './popup';
+>>>>>>> 271226f (add popup button)
 
 import { parseTextContent, parseActions } from "./parse";
 import type { ReadabilityType, ParsedActions, ActionItem } from "./parse";
@@ -18,6 +22,7 @@ const BUTTON_SIZE = 56;
 const ANIMATION_DURATION = 300;
 const STORAGE_KEY_DYSLEXIA_FONT = "flowstate-dyslexia-font";
 
+<<<<<<< HEAD
 // State
 let isSidebarOpen = false;
 let sidebarFrame: HTMLIFrameElement | null = null;
@@ -25,6 +30,22 @@ let floatingButton: HTMLElement | null = null;
 let pageWrapper: HTMLElement | null = null;
 let lastParsedActions: ParsedActions | null = null;
 let isDyslexiaFontEnabled = false;
+=======
+setTimeout(() => {
+    showButton("This page looks complex. Let me break it down.",
+        () => {
+        console.log('[Flowstate] User accepted help');
+        createSplitScreen();
+        },
+        () => {
+        console.log('[Flowstate] User dismissed help');
+        }
+    )
+})
+
+let splitScreenActive = false;
+let splitContainer: HTMLDivElement | null = null;
+>>>>>>> 271226f (add popup button)
 
 // Load saved preference
 try {
