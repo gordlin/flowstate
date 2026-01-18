@@ -1,20 +1,13 @@
-
 import { initTracker, type Tracker } from './tracker';
 import { showButton } from './popup';
 import { classifyUser, type ClassificationResult } from './agents/classifier';
-/**
- * FlowState Content Script
- *
- * Tracks user behavior, analyzes with LLM classifier, and offers personalized help.
- * The classifier generates a custom prompt for the content transformer based on
- * the user's specific struggles.
- */
-
 import { parseTextContent, parseActions } from "./parse";
 import type { ParsedActions } from "./parse";
 
 // Constants
 const SIDEBAR_WIDTH = 420;
+const MIN_SIDEBAR_WIDTH = 280;
+const MAX_SIDEBAR_WIDTH = 800;
 const ANIMATION_DURATION = 300;
 const CLASSIFICATION_INTERVAL = 15000; // Classify every 15 seconds
 const MIN_EVENTS_FOR_CLASSIFICATION = 2;
@@ -25,29 +18,31 @@ let isSidebarOpen = false;
 let sidebarFrame: HTMLIFrameElement | null = null;
 let pageWrapper: HTMLElement | null = null;
 let lastParsedActions: ParsedActions | null = null;
-const MIN_SIDEBAR_WIDTH = 300;
-const MAX_SIDEBAR_WIDTH = 800;
-let isResizing = false;
-let startX: number;
-let startWidth: number;
-let currentSidebarWidth = SIDEBAR_WIDTH
+let floatingButton: HTMLElement | null = null; // Kept for type compatibility if needed
 
+// Resize State
+let currentSidebarWidth = SIDEBAR_WIDTH;
 let resizeCleanup: (() => void) | null = null;
-let resizeVar = 0;
 
-/**
- * Adds resize functionality to the sidebar
- */
-/**
- * Adds resize functionality to the sidebar
- */
+let _currentClassification: ClassificationResult | null = null;
+let hasShownPopup = false;
+let classificationInterval: number | null = null;
+let isDyslexiaFontEnabled = false;
+
+try {
+  isDyslexiaFontEnabled =
+    localStorage.getItem(STORAGE_KEY_DYSLEXIA_FONT) === "true";
+} catch {
+  // localStorage not available
+}
+
+// Initialize tracker and store reference
+const tracker: Tracker = initTracker();
+
 /**
  * Adds resize functionality to the sidebar
  */
 function addSidebarResizeFunctionality(sidebarFrame: HTMLIFrameElement) {
-  const MIN_WIDTH = 280;
-  const MAX_WIDTH = 800;
-
   let isResizing = false;
 
   const resizeHandle = document.createElement('div');
@@ -77,23 +72,17 @@ function addSidebarResizeFunctionality(sidebarFrame: HTMLIFrameElement) {
 
   function getSidebarLeftEdge(): number {
     const rect = sidebarFrame.getBoundingClientRect();
-      // If layout is valid, trust it
-      if (rect.width > 0 && rect.left > 0) {
-        return rect.left;
-      }
+    // If layout is valid, trust it
+    if (rect.width > 0 && rect.left > 0) {
+      return rect.left;
+    }
 
-      // Fallback: right-docked sidebar
-      const computedWidth = parseFloat(
-          getComputedStyle(sidebarFrame).width || '0'
-      );
-
-      return window.innerWidth - computedWidth;
-
+    // Fallback: right-docked sidebar
+    return window.innerWidth - currentSidebarWidth;
   }
 
   function updateResizeHandlePosition() {
     const leftEdge = getSidebarLeftEdge();
-    // console.log("left edge " + leftEdge);
     resizeHandle.style.left = `${leftEdge}px`;
     hoverArea.style.left = `${leftEdge}px`;
     hoverArea.style.width = '16px';
@@ -106,68 +95,77 @@ function addSidebarResizeFunctionality(sidebarFrame: HTMLIFrameElement) {
   document.body.appendChild(resizeHandle);
   document.body.appendChild(hoverArea);
 
-  hoverArea.addEventListener('mouseenter', () => {
+  // Event Handlers
+  const onMouseEnter = () => {
     resizeHandle.style.opacity = '1';
     document.body.style.cursor = 'col-resize';
-  });
+  };
 
-  hoverArea.addEventListener('mouseleave', () => {
+  const onMouseLeave = () => {
     if (!isResizing) {
       resizeHandle.style.opacity = '0.15';
       document.body.style.cursor = '';
     }
-  });
+  };
 
-  hoverArea.addEventListener('mousedown', (e) => {
+  const onMouseDown = (e: MouseEvent) => {
     e.preventDefault();
     isResizing = true;
-
     sidebarFrame.style.pointerEvents = 'none';
     document.body.style.cursor = 'col-resize';
-  });
-  function handleMouseMove(e: MouseEvent) {
+  };
+
+  const onMouseMove = (e: MouseEvent) => {
     if (!isResizing) return;
 
     const newWidth = Math.min(
-        MAX_WIDTH,
-        Math.max(MIN_WIDTH, window.innerWidth - e.clientX)
+      MAX_SIDEBAR_WIDTH,
+      Math.max(MIN_SIDEBAR_WIDTH, window.innerWidth - e.clientX)
     );
 
+    // Update state and styles
+    currentSidebarWidth = newWidth;
     sidebarFrame.style.width = `${newWidth}px`;
+    
+    // Update wrapper margin immediately for smooth experience
+    if (pageWrapper) {
+      pageWrapper.style.marginRight = `${newWidth}px`;
+    }
+    
     updateResizeHandlePosition();
-  }
+  };
 
-  function handleMouseUp() {
+  const onMouseUp = () => {
     if (!isResizing) return;
-
     isResizing = false;
     sidebarFrame.style.pointerEvents = 'auto';
-
     resizeHandle.style.opacity = '0.15';
     document.body.style.cursor = '';
-  }
+  };
 
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
-  window.addEventListener('resize', updateResizeHandlePosition);
+  const onWindowResize = () => updateResizeHandlePosition();
 
+  // Attach Listeners
+  hoverArea.addEventListener('mouseenter', onMouseEnter);
+  hoverArea.addEventListener('mouseleave', onMouseLeave);
+  hoverArea.addEventListener('mousedown', onMouseDown);
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+  window.addEventListener('resize', onWindowResize);
 
+  // Return cleanup function
+  return () => {
+    hoverArea.removeEventListener('mouseenter', onMouseEnter);
+    hoverArea.removeEventListener('mouseleave', onMouseLeave);
+    hoverArea.removeEventListener('mousedown', onMouseDown);
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    window.removeEventListener('resize', onWindowResize);
+    
+    resizeHandle.remove();
+    hoverArea.remove();
+  };
 }
-
-let _currentClassification: ClassificationResult | null = null;
-let hasShownPopup = false;
-let classificationInterval: number | null = null;
-let isDyslexiaFontEnabled = false;
-
-try {
-  isDyslexiaFontEnabled =
-    localStorage.getItem(STORAGE_KEY_DYSLEXIA_FONT) === "true";
-} catch {
-  // localStorage not available
-}
-
-// Initialize tracker and store reference
-const tracker: Tracker = initTracker();
 
 /**
  * Run classification with LLM and decide whether to show help
@@ -193,7 +191,7 @@ async function runClassification() {
   try {
     const result = await classifyUser(eventLog, features);
     _currentClassification = result;
-    void _currentClassification; // Reserved for future use
+    void _currentClassification;
 
     console.log('[FlowState] Classification result:', {
       needsHelp: result.needsHelp,
@@ -273,6 +271,7 @@ setTimeout(() => {
   // Set up recurring classification every 15 seconds
   classificationInterval = window.setInterval(runClassification, CLASSIFICATION_INTERVAL);
 }, CLASSIFICATION_INTERVAL);
+
 /**
  * Creates an isolated style element that won't be affected by page styles
  */
@@ -757,7 +756,6 @@ function createSidebarHTML(): string {
   `;
 }
 
-
 /**
  * Creates the sidebar iframe
  */
@@ -792,7 +790,7 @@ function createSidebar(): HTMLIFrameElement {
     transform: none !important;
     clip: auto !important;
     overflow: visible !important;
-`;
+  `;
 
   document.body.appendChild(iframe);
 
@@ -936,20 +934,21 @@ function openSidebar() {
 
   requestAnimationFrame(() => {
     if (sidebarFrame) {
-        sidebarFrame.style.width = `${currentSidebarWidth}px`
-        sidebarFrame.style.right = "0px";
-
-      // Store cleanup function
+      sidebarFrame.style.width = `${currentSidebarWidth}px`;
+      sidebarFrame.style.right = "0px";
+      
+      // Initialize resize functionality and store cleanup
       const newCleanup = addSidebarResizeFunctionality(sidebarFrame);
       if (resizeCleanup) {
         resizeCleanup(); // Clean up any previous resize handlers
       }
       resizeCleanup = newCleanup;
-
     }
+    
     if (pageWrapper) {
       pageWrapper.style.marginRight = `${currentSidebarWidth}px`;
     }
+    
     if (floatingButton) {
       floatingButton.style.right = `${currentSidebarWidth + 24}px`;
     }
@@ -962,16 +961,14 @@ function openSidebar() {
 /**
  * Closes the sidebar with animation
  */
-/**
- * Closes the sidebar with animation
- */
 function closeSidebar() {
   if (!isSidebarOpen) return;
-
+  
   // Store current width for timeout check
   const closingWidth = currentSidebarWidth;
 
-  if(resizeCleanup){
+  // Clean up resize listeners
+  if (resizeCleanup) {
     resizeCleanup();
     resizeCleanup = null;
   }
@@ -984,6 +981,10 @@ function closeSidebar() {
     pageWrapper.style.marginRight = "0px";
   }
 
+  if (floatingButton) {
+    floatingButton.style.right = "24px";
+  }
+
   isSidebarOpen = false;
 
   setTimeout(() => {
@@ -993,10 +994,10 @@ function closeSidebar() {
       sidebarFrame = null;
     }
     unwrapPageContent();
-    // Only reset to default width if sidebar was fully closed
-    if (!isSidebarOpen) {
-      currentSidebarWidth = SIDEBAR_WIDTH;
-    }
+    
+    // Optional: Reset to default width if sidebar was fully closed
+    // Uncomment next line if you want width to reset every time
+    // currentSidebarWidth = SIDEBAR_WIDTH; 
   }, ANIMATION_DURATION);
 }
 
