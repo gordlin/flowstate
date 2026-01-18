@@ -49,7 +49,7 @@ export async function getApiKey(): Promise<string | null> {
   }
 
   // Hardcoded fallback for development
-  const devKey = 'API_KEY';
+  const devKey = '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';
   if (devKey && devKey.startsWith("sk-or-")) return devKey;
 
   return null;

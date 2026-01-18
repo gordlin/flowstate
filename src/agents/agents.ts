@@ -801,15 +801,20 @@ export async function assembleOutput(state: AgentState): Promise<Partial<AgentSt
   sections.push(`# ${mergedContent.title || "Page Summary"}`);
   sections.push(mergedContent.summary || "");
 
-  // Security banner if high risk
-  if (
-    securityAnalysis &&
-    (securityAnalysis.riskLevel === "high" ||
-      securityAnalysis.riskLevel === "critical")
-  ) {
-    sections.push(
-      `\n> ⚠️ **${securityAnalysis.riskLevel.toUpperCase()} RISK**: Please read carefully before proceeding.`,
-    );
+  // Security banner based on risk level
+  if (securityAnalysis) {
+    if (securityAnalysis.riskLevel === "high" || securityAnalysis.riskLevel === "critical") {
+      sections.push(
+        `\n> ⚠️ **${securityAnalysis.riskLevel.toUpperCase()} RISK**: Please read carefully before proceeding.`,
+      );
+    } else if (
+      securityAnalysis.riskLevel === "low" &&
+      (!securityAnalysis.financialActions || securityAnalysis.financialActions.length === 0) &&
+      (!securityAnalysis.darkPatterns || securityAnalysis.darkPatterns.length === 0)
+    ) {
+      // Show a friendly "all clear" message for safe pages
+      sections.push(`\n>No concerning elements found on this page.`);
+    }
   }
 
   // Key points
