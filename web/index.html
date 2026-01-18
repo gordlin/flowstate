@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowState</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Abel&family=Jost:ital,wght@0,100..900;1,100..900&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Abel";
+            overflow-x: hidden;
+            background: linear-gradient(135deg, #20284c 0%, #764ba2 100%);
+            color: #fff;
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 8vw, 5rem);
+            font-weight: 800;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            margin-bottom: 3rem;
+            opacity: 0.9;
+            max-width: 600px;
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: white;
+            color: #667eea;
+            padding: 1.25rem 2.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .cta-button svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .gallery-section {
+            padding: 4rem 0;
+            background: #1a1a2e;
+        }
+
+        .gallery-title {
+            text-align: center;
+            font-size: clamp(1.5rem, 5vw, 3rem);
+            margin-bottom: 3rem;
+            padding: 0 2rem;
+        }
+
+        .cm-slider__wrapper {
+            overflow-x: scroll;
+        }
+
+        .cm-slider {
+            display: flex;
+            gap: 5vmin;
+            user-select: none;
+        }
+
+        .cm-slider__image {
+            min-width: 45vmin;
+            max-width: 45vmin;
+            height: 65vmin;
+            object-fit: cover;
+            object-position: center center;
+            border-radius: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .cm-slider__image:hover {
+            transform: scale(1.05);
+        }
+
+        @media (hover: hover) {
+            .cm-slider__wrapper {
+                height: 100vh;
+                position: relative;
+                overflow: hidden;
+                background-color: black;
+                width: 80vw;
+                max-width: 80vw !important;
+                margin-left: calc(-40vw + 50%);
+                margin-right: calc(-40vw + 50%);
+            }
+
+            @media (max-width: 1120px) {
+                .cm-slider__wrapper {
+                    width: 100vw !important;
+                    max-width: 100vw !important;
+                    margin-left: calc(-50vw + 50%) !important;
+                    margin-right: calc(-50vw + 50%) !important;
+                }
+            }
+
+            .cm-slider {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(0%, -50%);
+            }
+
+            .cm-slider__image {
+                object-position: 0% center;
+            }
+        }
+
+        @media (hover: none) {
+            .cm-slider__image {
+                min-width: 65vmin;
+                max-width: 65vmin;
+            }
+
+            .cm-slider > :first-child {
+                margin-left: 5vmin;
+            }
+
+            .cm-slider > :last-child {
+                display: flex;
+            }
+
+            .cm-slider > :last-child::after {
+                content: "";
+                flex: 0 0 5vmin;
+            }
+
+            .cm-slider__wrapper {
+                overflow-x: scroll;
+                padding: 5vmin 0;
+                width: 100vw !important;
+                max-width: 100vw !important;
+                margin-left: calc(-50vw + 50%) !important;
+                margin-right: calc(-50vw + 50%) !important;
+            }
+        }
+
+        .footer {
+            background: #0f0f1e;
+            text-align: center;
+            padding: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <h1>FlowState</h1>
+        <p class="subtitle">The Go-To Browser Extension to Simplify Everything.</p>
+        <a href="https://chrome.google.com/webstore" target="_blank" rel="noopener" class="cta-button">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            Download Chrome Extension
+        </a>
+    </section>
+
+    <section class="gallery-section">
+        <h2 class="gallery-title">FlowState in Action</h2>
+        <div class="cm-slider__wrapper">
+            <div class="cm-slider">
+                <a class="cm-slider__link" data-slide-index="0" target="_blank" rel="noopener">
+                    <img class="cm-slider__image" src="https://unsplash.com/photos/ouo1hbizWwo/download?&w=1280"> <!--input a link to the gif/vid/img of your choice beside src="". Add more visuals if you'd like.-->
+                </a>
+                </a>
+                <a class="cm-slider__link" data-slide-index="1" target="_blank" rel="noopener">
+                    <img class="cm-slider__image" src="https://unsplash.com/photos/ISg37AI2A-s/download?&w=1280">
+                </a>
+                </a>
+                <a class="cm-slider__link" data-slide-index="2" target="_blank" rel="noopener">
+                    <img class="cm-slider__image" src="https://media1.tenor.com/m/AjFcwQvX7RMAAAAC/happy-dance-snoopy.gif">
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>UofT Hacks 13 Submission Showcase.</p>
+    </footer>
+
+    <script>
+        const cmSliderWrapper = document.querySelector(".cm-slider__wrapper");
+        const getWindowWidth = () => window.innerWidth || document.documentElement.clientWidth;
+        const getWindowHeight = () => window.innerHeight || document.documentElement.clientHeight;
+        const getWidthAdjustment = () => (getWindowWidth() - cmSliderWrapper.offsetWidth) / 2;
+        const isTouchScreenOnly = () => !window.matchMedia("(hover: hover)").matches;
+
+        cmSliderWrapper.onmousemove = e => {
+            if (isTouchScreenOnly()) return;
+            let percentage = ((e.clientX - getWidthAdjustment()) / cmSliderWrapper.offsetWidth) * 100;
+            percentage = percentage > 100 ? 100 : percentage < 0 ? 0 : percentage;
+            let cmSlider = document.querySelector(".cm-slider");
+
+            let animateDuration = 800;
+            if (typeof userTabbed !== "undefined" && userTabbed) {
+                animateDuration = 300;
+                userTabbed = false;
+            }
+
+            cmSlider.animate({
+                transform: `translate(${-percentage}%, -50%)`
+            }, {
+                duration: animateDuration,
+                fill: "forwards"
+            });
+
+            for (const image of cmSlider.getElementsByClassName("cm-slider__image")) {
+                image.animate({
+                    objectPosition: `${percentage}% center`
+                }, {
+                    duration: animateDuration,
+                    fill: "forwards"
+                });
+            }
+
+            if (typeof nudgeSliderScrollPosition !== "undefined" && nudgeSliderScrollPosition) nudgeSliderScrollPosition();
+        }
+    </script>
+</body>
+</html>
