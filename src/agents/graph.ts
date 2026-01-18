@@ -93,7 +93,7 @@ function createInitialState(
   return {
     pageContent,
     parsedActions,
-    customPrompt: customPrompt || '',  // Custom instructions for agents from classifier
+    customPrompt: customPrompt || '',  // Custom instructions from classifier
     identifiedCTAs: [],
     pageStructure: null,
     securityAnalysis: null,

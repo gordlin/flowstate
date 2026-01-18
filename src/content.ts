@@ -1,10 +1,7 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
+
 import { initTracker, type Tracker } from './tracker';
 import { showButton } from './popup';
 import { classifyUser, type ClassificationResult } from './agents/classifier';
->>>>>>> 79571b0 (add classifier agent)
 /**
  * FlowState Content Script
  *
@@ -12,16 +9,6 @@ import { classifyUser, type ClassificationResult } from './agents/classifier';
  * The classifier generates a custom prompt for the content transformer based on
  * the user's specific struggles.
  */
-<<<<<<< HEAD
-=======
-import { initTracker } from './tracker.ts';
-<<<<<<< HEAD
->>>>>>> 2ba268c (added OpenRouter connection)
-=======
-import { showButton, hideButton } from './popup';
->>>>>>> 271226f (add popup button)
-=======
->>>>>>> 79571b0 (add classifier agent)
 
 import { parseTextContent, parseActions } from "./parse";
 import type { ParsedActions } from "./parse";
@@ -29,44 +16,9 @@ import type { ParsedActions } from "./parse";
 // Constants
 const SIDEBAR_WIDTH = 420;
 const ANIMATION_DURATION = 300;
-<<<<<<< HEAD
-const STORAGE_KEY_DYSLEXIA_FONT = "flowstate-dyslexia-font";
-
-<<<<<<< HEAD
-// State
-let isSidebarOpen = false;
-let sidebarFrame: HTMLIFrameElement | null = null;
-let floatingButton: HTMLElement | null = null;
-let pageWrapper: HTMLElement | null = null;
-let lastParsedActions: ParsedActions | null = null;
-let isDyslexiaFontEnabled = false;
-=======
-setTimeout(() => {
-    showButton("This page looks complex. Let me break it down.",
-        () => {
-        console.log('[Flowstate] User accepted help');
-        createSplitScreen();
-        },
-        () => {
-        console.log('[Flowstate] User dismissed help');
-        }
-    )
-})
-
-let splitScreenActive = false;
-let splitContainer: HTMLDivElement | null = null;
->>>>>>> 271226f (add popup button)
-
-// Load saved preference
-try {
-  isDyslexiaFontEnabled =
-    localStorage.getItem(STORAGE_KEY_DYSLEXIA_FONT) === "true";
-} catch {
-  // localStorage not available
-}
-=======
 const CLASSIFICATION_INTERVAL = 15000; // Classify every 15 seconds
 const MIN_EVENTS_FOR_CLASSIFICATION = 2;
+const STORAGE_KEY_DYSLEXIA_FONT = "flowstate-dyslexia-font";
 
 // State
 let isSidebarOpen = false;
@@ -76,6 +28,14 @@ let lastParsedActions: ParsedActions | null = null;
 let _currentClassification: ClassificationResult | null = null;
 let hasShownPopup = false;
 let classificationInterval: number | null = null;
+let isDyslexiaFontEnabled = false;
+
+try {
+  isDyslexiaFontEnabled =
+    localStorage.getItem(STORAGE_KEY_DYSLEXIA_FONT) === "true";
+} catch {
+  // localStorage not available
+}
 
 // Initialize tracker and store reference
 const tracker: Tracker = initTracker();
@@ -184,8 +144,6 @@ setTimeout(() => {
   // Set up recurring classification every 15 seconds
   classificationInterval = window.setInterval(runClassification, CLASSIFICATION_INTERVAL);
 }, CLASSIFICATION_INTERVAL);
->>>>>>> 79571b0 (add classifier agent)
-
 /**
  * Creates an isolated style element that won't be affected by page styles
  */
