@@ -687,7 +687,7 @@ function parseTextContent(document: HTMLDocument) {
             const bits: string[] = [];
             if (c.label) bits.push(c.label);
             bits.push(`[${c.state.type}]`);
-            if (c.state.value) bits.push(`= ${c.state.value}`);
+            if ('value' in c.state && c.state.value) bits.push(`= ${c.state.value}`);
             if (c.state.disabled) bits.push("(disabled)");
             if (c.state.selected === "true") bits.push("(selected)");
             if (c.state.checked === "true") bits.push("(checked)");

@@ -34,7 +34,7 @@ export async function getApiKey(): Promise<string | null> {
   if (typeof chrome !== "undefined" && chrome.storage?.local) {
     try {
       const result = await chrome.storage.local.get(["openrouter_api_key"]);
-      if (result.openrouter_api_key) {
+      if (result.openrouter_api_key && typeof result.openrouter_api_key === "string") {
         return result.openrouter_api_key;
       }
     } catch {
@@ -49,8 +49,7 @@ export async function getApiKey(): Promise<string | null> {
   }
 
   // Hardcoded fallback for development
-  const devKey =
-    "INSERT_DEV_KEY";
+  const devKey = 'API_KEY';
   if (devKey && devKey.startsWith("sk-or-")) return devKey;
 
   return null;
@@ -72,7 +71,7 @@ export async function callLLM(
   }
 
   // Use DeepSeek as default model
-  const model = config.model || "deepseek/deepseek-v3.2";
+  const model = config.model || "google/gemini-2.5-flash-lite";
   const temperature = config.temperature ?? 0.3;
   const maxTokens = config.maxTokens ?? 4096;
   const jsonMode = config.jsonMode ?? true; // Default to JSON mode

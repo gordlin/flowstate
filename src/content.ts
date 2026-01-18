@@ -1,46 +1,139 @@
-<<<<<<< HEAD
-import { initTracker } from './tracker.ts';
-import { showButton, hideButton } from './popup';
-=======
+import { initTracker, type Tracker } from './tracker';
+import { showButton } from './popup';
+import { classifyUser, type ClassificationResult } from './agents/classifier';
 /**
  * FlowState Content Script
  *
- * Injects a floating button and sidebar for accessibility assistance.
- * Uses iframe isolation to prevent conflicts with host page styles.
+ * Tracks user behavior, analyzes with LLM classifier, and offers personalized help.
+ * The classifier generates a custom prompt for the content transformer based on
+ * the user's specific struggles.
  */
->>>>>>> b759861f6c509c2042cb7c8ed13a7a3c2f2d88b7
 
 import { parseTextContent, parseActions } from "./parse";
-import type { ReadabilityType, ParsedActions, ActionItem } from "./parse";
+import type { ParsedActions } from "./parse";
 
 // Constants
 const SIDEBAR_WIDTH = 420;
-const BUTTON_SIZE = 56;
 const ANIMATION_DURATION = 300;
+const CLASSIFICATION_INTERVAL = 15000; // Classify every 15 seconds
+const MIN_EVENTS_FOR_CLASSIFICATION = 2;
 
-<<<<<<< HEAD
-setTimeout(() => {
-    showButton("This page looks complex. Let me break it down.",
-        () => {
-        console.log('[Flowstate] User accepted help');
-        createSplitScreen();
-        },
-        () => {
-        console.log('[Flowstate] User dismissed help');
-        }
-    )
-})
-
-let splitScreenActive = false;
-let splitContainer: HTMLDivElement | null = null;
-=======
 // State
 let isSidebarOpen = false;
 let sidebarFrame: HTMLIFrameElement | null = null;
-let floatingButton: HTMLElement | null = null;
 let pageWrapper: HTMLElement | null = null;
 let lastParsedActions: ParsedActions | null = null;
->>>>>>> b759861f6c509c2042cb7c8ed13a7a3c2f2d88b7
+let _currentClassification: ClassificationResult | null = null;
+let hasShownPopup = false;
+let classificationInterval: number | null = null;
+
+// Initialize tracker and store reference
+const tracker: Tracker = initTracker();
+
+/**
+ * Run classification with LLM and decide whether to show help
+ */
+async function runClassification() {
+  if (hasShownPopup || isSidebarOpen) {
+    console.log('[FlowState] Popup already shown or sidebar open, skipping classification');
+    return;
+  }
+
+  const features = tracker.getFeatures();
+  const eventLog = tracker.getEventLog();
+
+  console.log('[FlowState] Running classification...');
+  console.log('[FlowState] Events collected:', features.events.length);
+
+  // Need minimum events to classify
+  if (features.events.length < MIN_EVENTS_FOR_CLASSIFICATION) {
+    console.log('[FlowState] Not enough events yet, will retry in 15s');
+    return;
+  }
+
+  try {
+    const result = await classifyUser(eventLog, features);
+    _currentClassification = result;
+    void _currentClassification; // Reserved for future use
+
+    console.log('[FlowState] Classification result:', {
+      needsHelp: result.needsHelp,
+      cluster: result.cluster,
+      confidence: result.confidence,
+      reasoning: result.reasoning
+    });
+
+    if (result.needsHelp && result.confidence >= 0.5) {
+      showHelpPopup(result);
+      // Stop the interval once we've shown help
+      if (classificationInterval) {
+        clearInterval(classificationInterval);
+        classificationInterval = null;
+      }
+    } else {
+      console.log('[FlowState] User seems fine, will re-assess in 15s');
+    }
+  } catch (error) {
+    console.error('[FlowState] Classification failed:', error);
+  }
+}
+
+/**
+ * Show the help popup with a message based on classification
+ */
+function showHelpPopup(classification: ClassificationResult) {
+  if (hasShownPopup) return;
+  hasShownPopup = true;
+
+  // Generate message based on observed behaviors
+  let message = "Need help understanding this page?";
+
+  if (classification.cluster === 'scanner') {
+    message = "Want the key points? I can summarize what matters.";
+  } else if (classification.cluster === 'stumbler') {
+    // Personalize based on problem areas
+    if (classification.problemAreas.length > 0) {
+      const area = classification.problemAreas[0];
+      message = `Having trouble with "${area}"? Let me simplify it.`;
+    } else {
+      message = "This looks confusing. Want me to break it down?";
+    }
+  }
+
+  console.log(`[FlowState] Showing popup for ${classification.cluster} user`);
+  console.log('[FlowState] Transformer prompt:', classification.transformerPrompt);
+
+  showButton(
+    message,
+    () => {
+      console.log('[FlowState] User accepted help');
+      // Pass the custom transformer prompt to the sidebar
+      openSidebarWithPrompt(classification.transformerPrompt);
+    },
+    () => {
+      console.log('[FlowState] User dismissed help');
+      // User dismissed, don't show again for this page
+    }
+  );
+}
+
+/**
+ * Open sidebar with a custom transformer prompt from the classifier
+ */
+function openSidebarWithPrompt(transformerPrompt: string) {
+  // Store the prompt for the analysis to use
+  (window as any).__flowstateTransformerPrompt = transformerPrompt;
+  openSidebar();
+}
+
+// Start classification loop after initial delay
+setTimeout(() => {
+  // Run first classification
+  runClassification();
+
+  // Set up recurring classification every 15 seconds
+  classificationInterval = window.setInterval(runClassification, CLASSIFICATION_INTERVAL);
+}, CLASSIFICATION_INTERVAL);
 
 /**
  * Creates an isolated style element that won't be affected by page styles
@@ -71,7 +164,7 @@ function createIsolatedStyles(): string {
     
     .sidebar-header {
       padding: 16px 20px;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -128,7 +221,7 @@ function createIsolatedStyles(): string {
       width: 40px;
       height: 40px;
       border: 3px solid #334155;
-      border-top-color: #6366f1;
+      border-top-color: #38bdf8;
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 0 auto 16px;
@@ -213,13 +306,13 @@ function createIsolatedStyles(): string {
     }
     
     .action-btn.primary {
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      color: white;
+      background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+      color: #0c1825;
     }
-    
+
     .action-btn.primary:hover {
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+      box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
     }
     
     .action-btn.secondary {
@@ -241,7 +334,7 @@ function createIsolatedStyles(): string {
     .cta-section-title {
       font-size: 14px;
       font-weight: 600;
-      color: #6366f1;
+      color: #38bdf8;
       margin-bottom: 12px;
       display: flex;
       align-items: center;
@@ -259,12 +352,12 @@ function createIsolatedStyles(): string {
     }
     
     .cta-item:hover {
-      border-color: #6366f1;
+      border-color: #38bdf8;
       transform: translateX(4px);
     }
-    
+
     .cta-item.primary-cta {
-      border-left: 3px solid #6366f1;
+      border-left: 3px solid #38bdf8;
     }
     
     .cta-item.secondary-cta {
@@ -338,7 +431,7 @@ function createIsolatedStyles(): string {
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: #6366f1;
+      color: #38bdf8;
       margin-bottom: 8px;
     }
     
@@ -371,8 +464,8 @@ function createIsolatedStyles(): string {
     }
     
     .badge.primary {
-      background: #6366f1;
-      color: white;
+      background: #38bdf8;
+      color: #0c1825;
     }
     
     .badge.secondary {
@@ -449,58 +542,6 @@ function createSidebarHTML(): string {
   `;
 }
 
-/**
- * Creates the floating activation button
- */
-function createFloatingButton(): HTMLElement {
-  const existing = document.getElementById("flowstate-float-btn");
-  if (existing) existing.remove();
-
-  const button = document.createElement("div");
-  button.id = "flowstate-float-btn";
-
-  button.style.cssText = `
-    position: fixed !important;
-    bottom: 24px !important;
-    right: 24px !important;
-    width: ${BUTTON_SIZE}px !important;
-    height: ${BUTTON_SIZE}px !important;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
-    border-radius: 50% !important;
-    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5) !important;
-    cursor: pointer !important;
-    z-index: 2147483646 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 24px !important;
-    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
-    user-select: none !important;
-    border: none !important;
-    outline: none !important;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif !important;
-  `;
-
-  button.innerHTML = "🌊";
-  button.title = "Open FlowState Accessibility Helper";
-
-  button.addEventListener("mouseenter", () => {
-    button.style.transform = "scale(1.1)";
-    button.style.boxShadow = "0 6px 24px rgba(99, 102, 241, 0.6)";
-  });
-
-  button.addEventListener("mouseleave", () => {
-    button.style.transform = "scale(1)";
-    button.style.boxShadow = "0 4px 20px rgba(99, 102, 241, 0.5)";
-  });
-
-  button.addEventListener("click", toggleSidebar);
-
-  document.body.appendChild(button);
-  floatingButton = button;
-
-  return button;
-}
 
 /**
  * Creates the sidebar iframe
@@ -614,9 +655,6 @@ function openSidebar() {
     if (pageWrapper) {
       pageWrapper.style.marginRight = `${SIDEBAR_WIDTH}px`;
     }
-    if (floatingButton) {
-      floatingButton.style.right = `${SIDEBAR_WIDTH + 24}px`;
-    }
   });
 
   isSidebarOpen = true;
@@ -637,10 +675,6 @@ function closeSidebar() {
     pageWrapper.style.marginRight = "0px";
   }
 
-  if (floatingButton) {
-    floatingButton.style.right = "24px";
-  }
-
   isSidebarOpen = false;
 
   setTimeout(() => {
@@ -650,17 +684,6 @@ function closeSidebar() {
     }
     unwrapPageContent();
   }, ANIMATION_DURATION);
-}
-
-/**
- * Toggles sidebar open/closed
- */
-function toggleSidebar() {
-  if (isSidebarOpen) {
-    closeSidebar();
-  } else {
-    openSidebar();
-  }
 }
 
 /**
@@ -851,7 +874,7 @@ function scrollToElement(selector: string) {
       const originalTransition = (el as HTMLElement).style.transition;
 
       (el as HTMLElement).style.transition = "outline 0.3s ease";
-      (el as HTMLElement).style.outline = "3px solid #6366f1";
+      (el as HTMLElement).style.outline = "3px solid #38bdf8";
 
       setTimeout(() => {
         (el as HTMLElement).style.outline = originalOutline;
@@ -950,8 +973,15 @@ async function runAnalysis(retryCount = 0) {
     // Run AI summary
     const { summarizePage } = await import("./agents");
 
+    // Get the custom transformer prompt from the classifier (if available)
+    const transformerPrompt = (window as any).__flowstateTransformerPrompt || '';
+    if (transformerPrompt) {
+      console.log('[FlowState] Using custom transformer prompt:', transformerPrompt);
+    }
+
     const result = await summarizePage(pageContent, parsedActions, {
       verbose: true,
+      customPrompt: transformerPrompt,  // Pass classifier's custom instructions
       onProgress: (node) => {
         const agentNames: Record<string, string> = {
           navigator: "📍 Navigator analyzing...",
@@ -1115,9 +1145,6 @@ function handleMessage(event: MessageEvent) {
       break;
   }
 }
-
-// Initialize
-createFloatingButton();
 
 // Message listener
 window.addEventListener("message", handleMessage);
