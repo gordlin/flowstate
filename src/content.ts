@@ -1,8 +1,4 @@
-import { initTracker } from './tracker';
-
-initTracker();
-
-console.log("Flowstate content script running!");
+console.log("Pathfinder content script running!");
 
 let splitScreenActive = false;
 let splitContainer: HTMLDivElement | null = null;
@@ -25,8 +21,9 @@ function injectSplitScreenStyles() {
         
         /* Original side - 50% width, resizable */
         .pathfinder-original-side {
-            width: 50% !important;
+            width: 50% ;  //removed important
             height: 100vh !important;
+            transition: width 0.1s ease;
             overflow: auto !important;
             background: white !important;
             pointer-events: auto !important;
@@ -176,51 +173,116 @@ function createSplitScreen() {
 function addResizeFunctionality(originalSide: HTMLElement, interpretedSide: HTMLElement) {
     let isResizing = false;
     let startX: number;
-    let startWidth: number;
+    let startLeftWidth: number;
 
-    originalSide.addEventListener('mousedown', (e) => {
-        // Only start resizing if clicking near the right edge
-        const rect = originalSide.getBoundingClientRect();
-        const edgeThreshold = 10; // pixels from right edge
-
-        if (rect.right - e.clientX < edgeThreshold) {
-            isResizing = true;
-            startX = e.clientX;
-            startWidth = originalSide.offsetWidth;
-            originalSide.style.cursor = 'col-resize';
-            document.body.style.cursor = 'col-resize';
-
-            e.preventDefault();
-        }
+    const resizeHandle = document.createElement('div');
+    Object.assign(resizeHandle.style, {
+        width: '4px',
+        height: '100%',
+        backgroundColor: '#ccc',
+        cursor: 'col-resize',
+        position: 'absolute',
+        left: '50%',
+        top: '0',
+        zIndex: '1000000',
+        transform: 'translateX(-50%)'
     });
 
-    document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
+    //add handle to the container
+    const container = originalSide.parentElement;
+    if(container){
+        container.style.position = 'relative';
+        container.appendChild(resizeHandle);
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+        if (!isResizing) {return;}
 
         const dx = e.clientX - startX;
-        const newWidth = Math.max(
-            200, // min width in pixels
+        const containerWidth = container?.offsetWidth || window.innerWidth;
+
+        //get new wdith
+        const newLeftWidth = Math.max(
+            200,
             Math.min(
-                window.innerWidth - 200, // max width (leaving room for right panel)
-                startWidth + dx
-            )
+                containerWidth - 200,
+                startLeftWidth + dx)
         );
 
-        // Set new width
-        originalSide.style.width = `${newWidth}px`;
-        originalSide.style.flex = 'none'; // Disable flex to use fixed width
 
-        // Update interpreted side to take remaining space
+        originalSide.style.width = `${newLeftWidth}px`;
+
+        interpretedSide.style.width = '';
         interpretedSide.style.flex = '1';
+
+        resizeHandle.style.left = `${newLeftWidth}px`;
+
+        e.preventDefault();
+    }
+
+    //stop resizing
+    const handleMouseUp = () => {
+        if(!isResizing){return;}
+
+        isResizing = false;
+
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.clientX;
+        startLeftWidth = originalSide.offsetWidth;
+
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'col-resize';
+
+        //add listeners for move and up
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        e.preventDefault();
+        e.stopPropagation();
     });
 
-    document.addEventListener('mouseup', () => {
-        if (isResizing) {
-            isResizing = false;
-            originalSide.style.cursor = '';
-            document.body.style.cursor = '';
-        }
-    });
+    //mouse move to handle resizing
+
+
+
+        // resizeHandle.addEventListener('mousedown', () => {
+        //     document.addEventListener('mousemove', handleMouseMove);
+        //     document.addEventListener('mouseup', handleMouseUp);
+        // });
+
+        const borderResizeArea = document.createElement('div');
+        Object.assign(borderResizeArea.style, {
+            position: 'absolute',
+            right: '-5px',
+            top: '0',
+            width: '10px',
+            height: '100%',
+            cursor: 'col-resize',
+            zIndex: '999999'
+        })
+
+        originalSide.style.position = 'relative';
+        originalSide.appendChild(borderResizeArea);
+
+        //border area also need to trigger resize
+        borderResizeArea.addEventListener('mousedown', (e) => {
+            resizeHandle.dispatchEvent(new MouseEvent('mousedown', e));
+        })
+
+        return () => {
+            resizeHandle.remove();
+            borderResizeArea.remove();
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
 }
 
 function exitSplitScreen() {

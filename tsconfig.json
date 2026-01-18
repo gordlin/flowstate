@@ -8,7 +8,7 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-     "isolatedModules": true,
+    "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
@@ -18,5 +18,5 @@
     "types": ["chrome", "vite/client"]
   },
   "include": ["src"],
-  "references": []
+  "references": []  // Remove or empty array
 }
