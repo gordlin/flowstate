@@ -15,6 +15,7 @@ export interface AgentState {
   pageContent: ReadabilityType;
   parsedActions: ParsedActions | null;
   rawHtml?: string;
+  customPrompt?: string;  // Custom instructions from classifier agent
 
   // Navigator output
   identifiedCTAs: IdentifiedCTA[];

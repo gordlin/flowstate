@@ -252,6 +252,11 @@ export async function compassionateWriterAgent(
 ): Promise<Partial<AgentState>> {
   const prompts = AGENT_PROMPTS.compassionateWriter;
 
+  // Build custom instructions section if classifier provided specific guidance
+  const customInstructions = state.customPrompt
+    ? `\n\n## IMPORTANT: Custom Instructions from Behavior Analysis\nThe following instructions are based on analyzing how this specific user interacted with the page. PRIORITIZE these instructions:\n\n${state.customPrompt}\n\n---\n`
+    : '';
+
   const humanPrompt = prompts.human
     .replace("{purpose}", state.pageStructure?.mainPurpose || "Unknown")
     .replace("{pageType}", state.pageStructure?.pageType || "unknown")
@@ -260,7 +265,7 @@ export async function compassionateWriterAgent(
       "{securityAnalysis}",
       JSON.stringify(state.securityAnalysis, null, 2),
     )
-    .replace("{content}", (state.pageContent.textContent || "").slice(0, 6000))
+    .replace("{content}", customInstructions + (state.pageContent.textContent || "").slice(0, 6000))
     .replace("{ctas}", formatCTAs(state.identifiedCTAs));
 
   const logs: CommunicationEntry[] = [
@@ -351,6 +356,11 @@ export async function technicalWriterAgent(
 ): Promise<Partial<AgentState>> {
   const prompts = AGENT_PROMPTS.technicalWriter;
 
+  // Build custom instructions section if classifier provided specific guidance
+  const customInstructions = state.customPrompt
+    ? `\n\n## IMPORTANT: Custom Instructions from Behavior Analysis\nThe following instructions are based on analyzing how this specific user interacted with the page. PRIORITIZE these instructions:\n\n${state.customPrompt}\n\n---\n`
+    : '';
+
   const humanPrompt = prompts.human
     .replace("{purpose}", state.pageStructure?.mainPurpose || "Unknown")
     .replace("{pageType}", state.pageStructure?.pageType || "unknown")
@@ -359,7 +369,7 @@ export async function technicalWriterAgent(
       "{securityAnalysis}",
       JSON.stringify(state.securityAnalysis, null, 2),
     )
-    .replace("{content}", (state.pageContent.textContent || "").slice(0, 6000))
+    .replace("{content}", customInstructions + (state.pageContent.textContent || "").slice(0, 6000))
     .replace("{ctas}", formatCTAs(state.identifiedCTAs));
 
   const logs: CommunicationEntry[] = [
@@ -764,7 +774,7 @@ export async function guardianAgent(
 /**
  * Final assembly: Combines all agent outputs into user-friendly summary
  */
-export function assembleOutput(state: AgentState): Partial<AgentState> {
+export async function assembleOutput(state: AgentState): Promise<Partial<AgentState>> {
   const logs: CommunicationEntry[] = [
     createLogEntry(
       "guardian",

@@ -4,7 +4,7 @@
  * Run with: OPENROUTER_API_KEY=your_key npx ts-node src/example.ts
  */
 
-import { parseTextContent, parseActions, createSummary } from "./parse";
+import { createSummary } from "./parse";
 
 // Mock document for testing (in real usage, this comes from the browser)
 const mockReadabilityContent = {
