@@ -3,7 +3,7 @@
  */
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_TIMEOUT = 90000; // 90 seconds for slower models
+const DEFAULT_TIMEOUT = 60000; // 60 seconds for slower models
 
 export interface LLMConfig {
   model?: string;
@@ -50,7 +50,7 @@ export async function getApiKey(): Promise<string | null> {
 
   // Hardcoded fallback for development
   const devKey =
-    "INSERT_DEV_KEY";
+    "";
   if (devKey && devKey.startsWith("sk-or-")) return devKey;
 
   return null;
@@ -72,7 +72,7 @@ export async function callLLM(
   }
 
   // Use DeepSeek as default model
-  const model = config.model || "deepseek/deepseek-v3.2";
+  const model = config.model || "google/gemini-2.5-flash-lite";
   const temperature = config.temperature ?? 0.3;
   const maxTokens = config.maxTokens ?? 4096;
   const jsonMode = config.jsonMode ?? true; // Default to JSON mode

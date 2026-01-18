@@ -12,6 +12,7 @@ import type { ReadabilityType, ParsedActions, ActionItem } from "./parse";
 const SIDEBAR_WIDTH = 420;
 const BUTTON_SIZE = 56;
 const ANIMATION_DURATION = 300;
+const STORAGE_KEY_DYSLEXIA_FONT = "flowstate-dyslexia-font";
 
 // State
 let isSidebarOpen = false;
@@ -19,12 +20,23 @@ let sidebarFrame: HTMLIFrameElement | null = null;
 let floatingButton: HTMLElement | null = null;
 let pageWrapper: HTMLElement | null = null;
 let lastParsedActions: ParsedActions | null = null;
+let isDyslexiaFontEnabled = false;
+
+// Load saved preference
+try {
+  isDyslexiaFontEnabled =
+    localStorage.getItem(STORAGE_KEY_DYSLEXIA_FONT) === "true";
+} catch {
+  // localStorage not available
+}
 
 /**
  * Creates an isolated style element that won't be affected by page styles
  */
 function createIsolatedStyles(): string {
   return `
+    @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap');
+    
     * {
       margin: 0;
       padding: 0;
@@ -38,6 +50,21 @@ function createIsolatedStyles(): string {
       color: #e2e8f0;
       background: #0f172a;
       overflow-x: hidden;
+    }
+    
+    body.dyslexia-font {
+      font-family: 'Lexend', -apple-system, BlinkMacSystemFont, sans-serif;
+      letter-spacing: 0.02em;
+      word-spacing: 0.05em;
+    }
+    
+    body.dyslexia-font .summary-content {
+      line-height: 1.8;
+    }
+    
+    body.dyslexia-font .summary-content p,
+    body.dyslexia-font .summary-content li {
+      line-height: 1.9;
     }
     
     .sidebar-container {
@@ -88,6 +115,64 @@ function createIsolatedStyles(): string {
       flex: 1;
       overflow-y: auto;
       padding: 20px;
+    }
+    
+    .settings-section {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .settings-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #e2e8f0;
+    }
+    
+    .settings-hint {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: #334155;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .toggle-switch.active {
+      background: #6366f1;
+    }
+    
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    
+    .toggle-switch.active::after {
+      transform: translateX(20px);
     }
     
     .status-card {
@@ -268,9 +353,9 @@ function createIsolatedStyles(): string {
     }
     
     .agent-log {
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid #334155;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #334155;
     }
     
     .agent-log-title {
@@ -398,6 +483,8 @@ function createIsolatedStyles(): string {
  * NO inline scripts due to CSP restrictions
  */
 function createSidebarHTML(): string {
+  const dyslexiaClass = isDyslexiaFontEnabled ? "dyslexia-font" : "";
+
   return `
     <!DOCTYPE html>
     <html>
@@ -406,7 +493,7 @@ function createSidebarHTML(): string {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>${createIsolatedStyles()}</style>
     </head>
-    <body>
+    <body class="${dyslexiaClass}">
       <div class="sidebar-container">
         <div class="sidebar-header">
           <div class="sidebar-title">
@@ -566,11 +653,82 @@ function setupIframeEventListeners(iframe: HTMLIFrameElement) {
           content.style.display =
             content.style.display === "none" ? "block" : "none";
         }
+      } else if (action === "toggle-dyslexia-font") {
+        toggleDyslexiaFont();
       }
     }
   });
 
   console.log("[FlowState] Iframe event listeners set up");
+}
+
+/**
+ * Toggles the dyslexia-friendly font
+ */
+function toggleDyslexiaFont() {
+  isDyslexiaFontEnabled = !isDyslexiaFontEnabled;
+
+  // Save preference
+  try {
+    localStorage.setItem(
+      STORAGE_KEY_DYSLEXIA_FONT,
+      String(isDyslexiaFontEnabled),
+    );
+  } catch {
+    // localStorage not available
+  }
+
+  // Update iframe body class
+  if (sidebarFrame) {
+    const iframeDoc =
+      sidebarFrame.contentDocument || sidebarFrame.contentWindow?.document;
+    if (iframeDoc?.body) {
+      if (isDyslexiaFontEnabled) {
+        iframeDoc.body.classList.add("dyslexia-font");
+      } else {
+        iframeDoc.body.classList.remove("dyslexia-font");
+      }
+    }
+
+    // Update toggle switch visual
+    const toggle = iframeDoc?.querySelector(
+      '[data-flowstate-action="toggle-dyslexia-font"]',
+    );
+    if (toggle) {
+      if (isDyslexiaFontEnabled) {
+        toggle.classList.add("active");
+      } else {
+        toggle.classList.remove("active");
+      }
+    }
+  }
+
+  console.log(
+    "[FlowState] Dyslexia font:",
+    isDyslexiaFontEnabled ? "enabled" : "disabled",
+  );
+}
+
+/**
+ * Renders the settings section with font toggle
+ */
+function renderSettingsSection(): string {
+  const toggleActiveClass = isDyslexiaFontEnabled ? "active" : "";
+
+  return `
+    <div class="settings-section">
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">
+            <span>📖</span>
+            <span>Reading-optimized font</span>
+          </div>
+          <div class="settings-hint">Uses Lexend font for easier reading</div>
+        </div>
+        <div class="toggle-switch ${toggleActiveClass}" data-flowstate-action="toggle-dyslexia-font"></div>
+      </div>
+    </div>
+  `;
 }
 
 /**
@@ -934,9 +1092,7 @@ async function runAnalysis(retryCount = 0) {
         const agentNames: Record<string, string> = {
           navigator: "📍 Navigator analyzing...",
           security: "🛡️ Security check...",
-          compassionate_writer: "💝 Writing summary...",
-          technical_writer: "📋 Writing summary...",
-          arbiter: "⚖️ Merging results...",
+          writer: "✍️ Writing summary...",
           guardian: "✅ Quality review...",
           assemble: "📝 Finishing up...",
         };
@@ -955,6 +1111,7 @@ async function runAnalysis(retryCount = 0) {
     // Render final result
     const summaryHTML = formatSummaryHTML(result.summary);
     const ctasHTML = renderCTAsSection(parsedActions);
+    const settingsHTML = renderSettingsSection();
 
     let errorsHTML = "";
     if (result.errors.length > 0) {
@@ -972,11 +1129,6 @@ async function runAnalysis(retryCount = 0) {
     }
 
     updateSidebarContent(`
-      ${errorsHTML}
-      <div class="summary-content">
-        ${summaryHTML}
-      </div>
-      ${ctasHTML}
       <div class="agent-log">
         <div class="agent-log-title" data-flowstate-action="toggle-log" style="cursor: pointer;">
           📋 Agent Communication Log (${result.communicationLog.length} entries - click to expand)
@@ -985,6 +1137,13 @@ async function runAnalysis(retryCount = 0) {
           ${escapeHtml(result.formattedLog)}
         </div>
       </div>
+      ${settingsHTML}
+      ${errorsHTML}
+      <div class="summary-content">
+        ${summaryHTML}
+      </div>
+      ${ctasHTML}
+      
       <div class="action-buttons">
         <button class="action-btn primary" data-flowstate-action="refresh">
           🔄 Re-analyze
@@ -1037,8 +1196,10 @@ async function runAnalysis(retryCount = 0) {
 
     // Still show CTAs even if AI failed
     const ctasHTML = renderCTAsSection(lastParsedActions);
+    const settingsHTML = renderSettingsSection();
 
     updateSidebarContent(`
+      ${settingsHTML}
       <div class="error-card">
         <div class="error-title">❌ Analysis Failed</div>
         <div class="error-message">${escapeHtml(errorMessage)}</div>
