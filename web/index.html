@@ -1,256 +1,603 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FlowState</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Abel&family=Jost:ital,wght@0,100..900;1,100..900&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Abel&family=Italianno&family=Jost:ital,wght@0,100..900;1,100..900&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/png" href="iconic.png" />
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      :root {
+        --bg: #20284c;
+        --clr-1: #00c2ff;
+        --clr-2: #33ff8c;
+        --clr-3: #4ff0f3;
+        --clr-4: #e54cff;
+        --blur: 1rem;
+        --fs: clamp(3rem, 8vw, 7rem);
+        --ls: clamp(-1.75px, -0.25vw, -3.5px);
+      }
 
-        body {
-            font-family: "Abel";
-            overflow-x: hidden;
-            background: linear-gradient(135deg, #20284c 0%, #764ba2 100%);
-            color: #fff;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 2rem;
-            position: relative;
-            z-index: 10;
-        }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Oxygen,
+          Ubuntu,
+          Cantarell,
+          "Open Sans",
+          "Helvetica Neue",
+          sans-serif;
+        overflow-x: hidden;
+        background: #20284c;
+        color: #fff;
+      }
 
-        h1 {
-            font-size: clamp(2rem, 8vw, 5rem);
-            font-weight: 800;
-            margin-bottom: 1rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
+      .hero {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 2rem;
+        position: relative;
+        z-index: 10;
+      }
 
-        .subtitle {
-            font-size: clamp(1rem, 3vw, 1.5rem);
-            margin-bottom: 3rem;
-            opacity: 0.9;
-            max-width: 600px;
-        }
+      h1 {
+        font-size: var(--fs);
+        font-weight: 400;
+        letter-spacing: var(--ls);
+        position: relative;
+        overflow: hidden;
+        background: #20284c;
+        margin: 0 0 0.5rem 0;
+        padding: 0.5rem 1rem;
+        font-family: "Inter", sans-serif;
+      }
 
-        .cta-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            background: white;
-            color: #667eea;
-            padding: 1.25rem 2.5rem;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 1.1rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
+      .aurora {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+        mix-blend-mode: darken;
+        pointer-events: none;
+      }
 
-        .cta-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-        }
+      .aurora__item {
+        overflow: hidden;
+        position: absolute;
+        width: 60vw;
+        height: 60vw;
+        background-color: var(--clr-1);
+        border-radius: 37% 29% 27% 27% / 28% 25% 41% 37%;
+        filter: blur(var(--blur));
+        mix-blend-mode: overlay;
+      }
 
-        .cta-button svg {
-            width: 24px;
-            height: 24px;
-        }
+      .aurora__item:nth-of-type(1) {
+        top: -50%;
+        animation:
+          aurora-border 6s ease-in-out infinite,
+          aurora-1 12s ease-in-out infinite alternate;
+      }
 
-        .gallery-section {
-            padding: 4rem 0;
-            background: #1a1a2e;
-        }
+      .aurora__item:nth-of-type(2) {
+        background-color: var(--clr-3);
+        right: 0;
+        top: 0;
+        animation:
+          aurora-border 6s ease-in-out infinite,
+          aurora-2 12s ease-in-out infinite alternate;
+      }
 
-        .gallery-title {
-            text-align: center;
-            font-size: clamp(1.5rem, 5vw, 3rem);
-            margin-bottom: 3rem;
-            padding: 0 2rem;
-        }
+      .aurora__item:nth-of-type(3) {
+        background-color: var(--clr-2);
+        left: 0;
+        bottom: 0;
+        animation:
+          aurora-border 6s ease-in-out infinite,
+          aurora-3 8s ease-in-out infinite alternate;
+      }
 
+      .aurora__item:nth-of-type(4) {
+        background-color: var(--clr-4);
+        right: 0;
+        bottom: -50%;
+        animation:
+          aurora-border 6s ease-in-out infinite,
+          aurora-4 24s ease-in-out infinite alternate;
+      }
+
+      @keyframes aurora-1 {
+        0% {
+          top: 0;
+          right: 0;
+        }
+        50% {
+          top: 100%;
+          right: 75%;
+        }
+        75% {
+          top: 100%;
+          right: 25%;
+        }
+        100% {
+          top: 0;
+          right: 0;
+        }
+      }
+
+      @keyframes aurora-2 {
+        0% {
+          top: -50%;
+          left: 0%;
+        }
+        60% {
+          top: 100%;
+          left: 75%;
+        }
+        85% {
+          top: 100%;
+          left: 25%;
+        }
+        100% {
+          top: -50%;
+          left: 0%;
+        }
+      }
+
+      @keyframes aurora-3 {
+        0% {
+          bottom: 0;
+          left: 0;
+        }
+        40% {
+          bottom: 100%;
+          left: 75%;
+        }
+        65% {
+          bottom: 40%;
+          left: 50%;
+        }
+        100% {
+          bottom: 0;
+          left: 0;
+        }
+      }
+
+      @keyframes aurora-4 {
+        0% {
+          bottom: -50%;
+          right: 0;
+        }
+        50% {
+          bottom: 0%;
+          right: 40%;
+        }
+        90% {
+          bottom: 50%;
+          right: 25%;
+        }
+        100% {
+          bottom: -50%;
+          right: 0;
+        }
+      }
+
+      @keyframes aurora-border {
+        0% {
+          border-radius: 37% 29% 27% 27% / 28% 25% 41% 37%;
+        }
+        25% {
+          border-radius: 47% 29% 39% 49% / 61% 19% 66% 26%;
+        }
+        50% {
+          border-radius: 57% 23% 47% 72% / 63% 17% 66% 33%;
+        }
+        75% {
+          border-radius: 28% 49% 29% 100% / 93% 20% 64% 25%;
+        }
+        100% {
+          border-radius: 37% 29% 27% 27% / 28% 25% 41% 37%;
+        }
+      }
+
+      .typewriter {
+        display: flex;
+      }
+
+      .typewriter p {
+        font-family: sans-serif;
+        font-size: 1.5rem;
+        margin-inline: auto;
+        overflow: hidden;
+        white-space: nowrap;
+        border-right: 1px solid;
+        animation:
+          typing 3s steps(22) forwards,
+          blink 1s step-end infinite;
+      }
+      .slogan {
+        font-size: clamp(2rem, 4vw, 3rem);
+        font-weight: 700;
+      }
+
+      .rotator::before {
+        content: "Developers";
+        display: inline-block;
+        margin-left: 0.4ch;
+        white-space: nowrap;
+
+        animation: words 8s infinite steps(1);
+      }
+
+      @keyframes words {
+        0% {
+          content: "Readers";
+        }
+        25% {
+          content: "Developers";
+        }
+        50% {
+          content: "Changemakers";
+        }
+        75% {
+          content: "Trailblazers";
+        }
+        100% {
+          content: "Everyone";
+        }
+      }
+
+      @keyframes typing {
+        from {
+          width: 0;
+        }
+        to {
+          width: 100%;
+        }
+      }
+
+      @keyframes blink {
+        50% {
+          border-color: transparent;
+        }
+      }
+
+      .subtitle {
+        font-size: clamp(1rem, 3vw, 1.5rem);
+        margin-bottom: 1rem;
+        opacity: 0.9;
+        max-width: 600px;
+      }
+      .subtitle2 {
+        font-size: clamp(2rem, 6vw, 3rem);
+        margin-bottom: 1rem;
+        opacity: 0.9;
+        max-width: 1200px;
+        font-weight: 200;
+      }
+
+      .cta-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: white;
+        color: #667eea;
+        padding: 1.25rem 2.5rem;
+        border-radius: 50px;
+        text-decoration: none;
+        font-weight: 400;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .cta-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+      }
+
+      .cta-button svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      .gallery-section {
+        padding: 4rem 0;
+        background: #1a1a2e;
+      }
+
+      .gallery-title {
+        text-align: center;
+        font-size: clamp(1.5rem, 5vw, 3rem);
+        margin-bottom: 3rem;
+        padding: 0 2rem;
+        font-weight: 400;
+      }
+
+      .cm-slider__wrapper {
+        overflow-x: scroll;
+      }
+
+      .cm-slider {
+        display: flex;
+        gap: 5vmin;
+        user-select: none;
+      }
+
+      .cm-slider__image {
+        min-width: 80vmin;
+        max-width: 80vmin;
+        height: 60vmin;
+        object-fit: cover;
+        object-position: center center;
+        border-radius: 12px;
+        transition: transform 0.3s ease;
+      }
+
+      .cm-slider__image:hover {
+        transform: scale(1.05);
+      }
+
+      @media (hover: hover) {
         .cm-slider__wrapper {
-            overflow-x: scroll;
+          height: 70vh;
+          position: relative;
+          overflow: hidden;
+          background-color: black;
+          width: 80vw;
+          max-width: 80vw !important;
+          margin-left: calc(-40vw + 50%);
+          margin-right: calc(-40vw + 50%);
+        }
+
+        @media (max-width: 1120px) {
+          .cm-slider__wrapper {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            margin-left: calc(-50vw + 50%) !important;
+            margin-right: calc(-50vw + 50%) !important;
+          }
         }
 
         .cm-slider {
-            display: flex;
-            gap: 5vmin;
-            user-select: none;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(0%, -50%);
         }
 
         .cm-slider__image {
-            min-width: 45vmin;
-            max-width: 45vmin;
-            height: 65vmin;
-            object-fit: cover;
-            object-position: center center;
-            border-radius: 12px;
-            transition: transform 0.3s ease;
+          object-position: 0% center;
+        }
+      }
+
+      @media (hover: none) {
+        .cm-slider__image {
+          min-width: 80vmin;
+          max-width: 80vmin;
+          height: 60vmin;
         }
 
-        .cm-slider__image:hover {
-            transform: scale(1.05);
+        .cm-slider > :first-child {
+          margin-left: 5vmin;
         }
 
-        @media (hover: hover) {
-            .cm-slider__wrapper {
-                height: 100vh;
-                position: relative;
-                overflow: hidden;
-                background-color: black;
-                width: 80vw;
-                max-width: 80vw !important;
-                margin-left: calc(-40vw + 50%);
-                margin-right: calc(-40vw + 50%);
-            }
-
-            @media (max-width: 1120px) {
-                .cm-slider__wrapper {
-                    width: 100vw !important;
-                    max-width: 100vw !important;
-                    margin-left: calc(-50vw + 50%) !important;
-                    margin-right: calc(-50vw + 50%) !important;
-                }
-            }
-
-            .cm-slider {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(0%, -50%);
-            }
-
-            .cm-slider__image {
-                object-position: 0% center;
-            }
+        .cm-slider > :last-child {
+          display: flex;
         }
 
-        @media (hover: none) {
-            .cm-slider__image {
-                min-width: 65vmin;
-                max-width: 65vmin;
-            }
-
-            .cm-slider > :first-child {
-                margin-left: 5vmin;
-            }
-
-            .cm-slider > :last-child {
-                display: flex;
-            }
-
-            .cm-slider > :last-child::after {
-                content: "";
-                flex: 0 0 5vmin;
-            }
-
-            .cm-slider__wrapper {
-                overflow-x: scroll;
-                padding: 5vmin 0;
-                width: 100vw !important;
-                max-width: 100vw !important;
-                margin-left: calc(-50vw + 50%) !important;
-                margin-right: calc(-50vw + 50%) !important;
-            }
+        .cm-slider > :last-child::after {
+          content: "";
+          flex: 0 0 5vmin;
         }
 
-        .footer {
-            background: #0f0f1e;
-            text-align: center;
-            padding: 2rem;
-            font-size: 0.9rem;
-            opacity: 0.7;
+        .cm-slider__wrapper {
+          overflow-x: scroll;
+          padding: 5vmin 0;
+          width: 100vw !important;
+          max-width: 100vw !important;
+          margin-left: calc(-50vw + 50%) !important;
+          margin-right: calc(-50vw + 50%) !important;
         }
+      }
+
+      .footer {
+        background: #0f0f1e;
+        text-align: center;
+        padding: 2rem;
+        font-size: 0.9rem;
+        opacity: 0.7;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <section class="hero">
-        <h1>FlowState</h1>
-        <p class="subtitle">The Go-To Browser Extension to Simplify Everything.</p>
-        <a href="https://chrome.google.com/webstore" target="_blank" rel="noopener" class="cta-button">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
-            Download Chrome Extension
-        </a>
+      <h1>
+        <img
+          src="iconic.png"
+          alt="Description"
+          style="vertical-align: middle; width: 150px; height: auto"
+        />
+        FlowState
+        <div class="aurora">
+          <div class="aurora__item"></div>
+          <div class="aurora__item"></div>
+          <div class="aurora__item"></div>
+          <div class="aurora__item"></div>
+        </div>
+      </h1>
+      <div class="typewriter">
+        <p class="subtitle">
+          The Go-To Browser Extension that Simplifies Everything.
+        </p>
+      </div>
+      <p class="subtitle2">
+        Get the unfair advantage in reading between the lines.
+      </p>
+      <a
+        href="https://chrome.google.com/webstore"
+        target="_blank"
+        rel="noopener"
+        class="cta-button"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+          />
+        </svg>
+        Download FlowState
+      </a>
     </section>
 
     <section class="gallery-section">
-        <h2 class="gallery-title">FlowState in Action</h2>
-        <div class="cm-slider__wrapper">
-            <div class="cm-slider">
-                <a class="cm-slider__link" data-slide-index="0" target="_blank" rel="noopener">
-                    <img class="cm-slider__image" src="https://unsplash.com/photos/ouo1hbizWwo/download?&w=1280"> <!--input a link to the gif/vid/img of your choice beside src="". Add more visuals if you'd like.-->
-                </a>
-                </a>
-                <a class="cm-slider__link" data-slide-index="1" target="_blank" rel="noopener">
-                    <img class="cm-slider__image" src="https://unsplash.com/photos/ISg37AI2A-s/download?&w=1280">
-                </a>
-                </a>
-                <a class="cm-slider__link" data-slide-index="2" target="_blank" rel="noopener">
-                    <img class="cm-slider__image" src="https://media1.tenor.com/m/AjFcwQvX7RMAAAAC/happy-dance-snoopy.gif">
-                </a>
-            </div>
+      <h2 class="gallery-title">FlowState in Action</h2>
+      <div class="cm-slider__wrapper">
+        <div class="cm-slider">
+          <a
+            class="cm-slider__link"
+            data-slide-index="0"
+            target="_blank"
+            rel="noopener"
+          >
+            <video class="cm-slider__image" autoplay loop muted playsinline>
+              <source src="videos/showcase1.mp4" type="video/mp4" />
+            </video>
+          </a>
+          <a
+            class="cm-slider__link"
+            data-slide-index="1"
+            target="_blank"
+            rel="noopener"
+          >
+            <img class="cm-slider__image" src="videos/showcase3.png" />
+          </a>
+          <a
+            class="cm-slider__link"
+            data-slide-index="0"
+            target="_blank"
+            rel="noopener"
+          >
+            <video class="cm-slider__image" autoplay loop muted playsinline>
+              <source src="videos/showcase2.mp4" type="video/mp4" />
+            </video>
+          </a>
         </div>
+      </div>
     </section>
 
     <footer class="footer">
-        <p>UofT Hacks 13 Submission Showcase.</p>
+      <p>UofTHacks 13 Submission Showcase.</p>
     </footer>
 
     <script>
-        const cmSliderWrapper = document.querySelector(".cm-slider__wrapper");
-        const getWindowWidth = () => window.innerWidth || document.documentElement.clientWidth;
-        const getWindowHeight = () => window.innerHeight || document.documentElement.clientHeight;
-        const getWidthAdjustment = () => (getWindowWidth() - cmSliderWrapper.offsetWidth) / 2;
-        const isTouchScreenOnly = () => !window.matchMedia("(hover: hover)").matches;
+      const cmSliderWrapper = document.querySelector(".cm-slider__wrapper");
+      const getWindowWidth = () =>
+        window.innerWidth || document.documentElement.clientWidth;
+      const getWindowHeight = () =>
+        window.innerHeight || document.documentElement.clientHeight;
+      const getWidthAdjustment = () =>
+        (getWindowWidth() - cmSliderWrapper.offsetWidth) / 2;
+      const isTouchScreenOnly = () =>
+        !window.matchMedia("(hover: hover)").matches;
 
-        cmSliderWrapper.onmousemove = e => {
-            if (isTouchScreenOnly()) return;
-            let percentage = ((e.clientX - getWidthAdjustment()) / cmSliderWrapper.offsetWidth) * 100;
-            percentage = percentage > 100 ? 100 : percentage < 0 ? 0 : percentage;
-            let cmSlider = document.querySelector(".cm-slider");
+      cmSliderWrapper.onmousemove = (e) => {
+        if (isTouchScreenOnly()) return;
+        let percentage =
+          ((e.clientX - getWidthAdjustment()) / cmSliderWrapper.offsetWidth) *
+          100;
+        percentage = percentage > 100 ? 100 : percentage < 0 ? 0 : percentage;
+        let cmSlider = document.querySelector(".cm-slider");
 
-            let animateDuration = 800;
-            if (typeof userTabbed !== "undefined" && userTabbed) {
-                animateDuration = 300;
-                userTabbed = false;
-            }
-
-            cmSlider.animate({
-                transform: `translate(${-percentage}%, -50%)`
-            }, {
-                duration: animateDuration,
-                fill: "forwards"
-            });
-
-            for (const image of cmSlider.getElementsByClassName("cm-slider__image")) {
-                image.animate({
-                    objectPosition: `${percentage}% center`
-                }, {
-                    duration: animateDuration,
-                    fill: "forwards"
-                });
-            }
-
-            if (typeof nudgeSliderScrollPosition !== "undefined" && nudgeSliderScrollPosition) nudgeSliderScrollPosition();
+        let animateDuration = 800;
+        if (typeof userTabbed !== "undefined" && userTabbed) {
+          animateDuration = 300;
+          userTabbed = false;
         }
+
+        cmSlider.animate(
+          {
+            transform: `translate(${-percentage}%, -50%)`,
+          },
+          {
+            duration: animateDuration,
+            fill: "forwards",
+          },
+        );
+
+        for (const image of cmSlider.getElementsByClassName(
+          "cm-slider__image",
+        )) {
+          image.animate(
+            {
+              objectPosition: `${percentage}% center`,
+            },
+            {
+              duration: animateDuration,
+              fill: "forwards",
+            },
+          );
+        }
+
+        if (
+          typeof nudgeSliderScrollPosition !== "undefined" &&
+          nudgeSliderScrollPosition
+        )
+          nudgeSliderScrollPosition();
+      };
+
+      cmSliderWrapper.onmouseleave = () => {
+        if (isTouchScreenOnly()) return;
+        let cmSlider = document.querySelector(".cm-slider");
+
+        cmSlider.animate(
+          {
+            transform: `translate(-50%, -50%)`,
+          },
+          {
+            duration: 600,
+            fill: "forwards",
+          },
+        );
+
+        for (const image of cmSlider.getElementsByClassName(
+          "cm-slider__image",
+        )) {
+          image.animate(
+            {
+              objectPosition: `50% center`,
+            },
+            {
+              duration: 600,
+              fill: "forwards",
+            },
+          );
+        }
+      };
     </script>
-</body>
+  </body>
 </html>
