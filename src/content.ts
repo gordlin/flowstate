@@ -1,8 +1,21 @@
 import { initTracker } from './tracker.ts';
+import { showButton, hideButton } from './popup';
 
 initTracker();
 
 console.log("Flowstate content script running!");
+
+setTimeout(() => {
+    showButton("This page looks complex. Let me break it down.",
+        () => {
+        console.log('[Flowstate] User accepted help');
+        createSplitScreen();
+        },
+        () => {
+        console.log('[Flowstate] User dismissed help');
+        }
+    )
+})
 
 let splitScreenActive = false;
 let splitContainer: HTMLDivElement | null = null;
