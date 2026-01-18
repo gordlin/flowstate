@@ -22,4 +22,32 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+<<<<<<< HEAD
+<<<<<<< HEAD
 .env
+=======
+=======
+>>>>>>> 79571b0330519c35b52edef9dba76a0b7460e6ab
+
+demo
+secrets.ts
+*.tsbuildinfo
+
+# env files
+.env
+.env.local
+.env.*.local
+
+# Vite
+vite.config.ts.timestamp-*
+vite.config.js.timestamp-*
+
+# ESLint cache
+.eslintcache
+
+<<<<<<< HEAD
+>>>>>>> 2ba268c (added OpenRouter connection)
+=======
+=======
+>>>>>>> b759861f6c509c2042cb7c8ed13a7a3c2f2d88b7
+>>>>>>> 79571b0330519c35b52edef9dba76a0b7460e6ab
