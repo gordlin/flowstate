@@ -1,7 +1,7 @@
 {
-  "name": "pathfinder-ext",
+  "name": "flowstate",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,14 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "@mozilla/readability": "^0.5.0"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.3.0",
     "@eslint/js": "^9.39.1",
     "@types/chrome": "^0.1.33",
-    "@types/node": "^24.10.1",
+    "@types/node": "^20.19.30",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react-swc": "^4.2.2",
@@ -25,7 +24,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "typescript": "~5.9.3",
+    "typescript": "^5.0.0",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
   }

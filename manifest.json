@@ -1,20 +1,29 @@
 {
   "manifest_version": 3,
-  "name": "Pathfinder",
+  "name": "FlowState",
   "version": "0.1.0",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "description": "AI-powered accessibility assistant that helps users understand complex web pages",
+  "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["<all_urls>"],
   "action": {
-    "default_popup": "index.html"
-  },
-  "background": {
-    "service_worker": "src/background.ts",
-    "type": "module"
+    "default_title": "Toggle FlowState Sidebar"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/content.ts"]
+      "js": ["src/content.ts"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "background": {
+    "service_worker": "src/background.ts",
+    "type": "module"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["dist/*"],
+      "matches": ["<all_urls>"]
     }
   ]
 }
