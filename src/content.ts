@@ -6,7 +6,7 @@
  */
 
 import { parseTextContent, parseActions } from "./parse";
-import type { ReadabilityType, ParsedActions } from "./parse";
+import type { ReadabilityType, ParsedActions, ActionItem } from "./parse";
 
 // Constants
 const SIDEBAR_WIDTH = 420;
@@ -18,6 +18,7 @@ let isSidebarOpen = false;
 let sidebarFrame: HTMLIFrameElement | null = null;
 let floatingButton: HTMLElement | null = null;
 let pageWrapper: HTMLElement | null = null;
+let lastParsedActions: ParsedActions | null = null;
 
 /**
  * Creates an isolated style element that won't be affected by page styles
@@ -208,6 +209,64 @@ function createIsolatedStyles(): string {
       background: #475569;
     }
     
+    .cta-section {
+      margin-top: 20px;
+      padding: 16px;
+      background: #1e293b;
+      border-radius: 12px;
+    }
+    
+    .cta-section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #6366f1;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .cta-item {
+      padding: 12px;
+      background: #0f172a;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+    
+    .cta-item:hover {
+      border-color: #6366f1;
+      transform: translateX(4px);
+    }
+    
+    .cta-item.primary-cta {
+      border-left: 3px solid #6366f1;
+    }
+    
+    .cta-item.secondary-cta {
+      border-left: 3px solid #64748b;
+    }
+    
+    .cta-item .cta-label {
+      font-weight: 500;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+    
+    .cta-item .cta-type {
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+    
+    .cta-item .cta-hint {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    
     .agent-log {
       margin-top: 20px;
       padding-top: 16px;
@@ -303,15 +362,42 @@ function createIsolatedStyles(): string {
       background: #0891b2;
       color: white;
     }
+    
+    .error-card {
+      background: #3f1f1f;
+      border: 1px solid #7f1d1d;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .error-title {
+      color: #f87171;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    
+    .error-message {
+      color: #fca5a5;
+      font-size: 13px;
+    }
+    
+    .retry-hint {
+      margin-top: 12px;
+      padding: 12px;
+      background: #1e293b;
+      border-radius: 8px;
+      color: #fbbf24;
+      font-size: 12px;
+    }
   `;
 }
 
 /**
  * Creates the sidebar iframe HTML content
+ * NO inline scripts due to CSP restrictions
  */
-function createSidebarHTML(
-  initialState: "loading" | "ready" = "loading",
-): string {
+function createSidebarHTML(): string {
   return `
     <!DOCTYPE html>
     <html>
@@ -327,7 +413,7 @@ function createSidebarHTML(
             <span>🌊</span>
             <span>FlowState</span>
           </div>
-          <button class="close-btn" id="close-sidebar" title="Close sidebar">×</button>
+          <button class="close-btn" data-flowstate-action="close" title="Close sidebar">×</button>
         </div>
         <div class="sidebar-content" id="sidebar-content">
           <div class="status-card loading">
@@ -336,11 +422,6 @@ function createSidebarHTML(
           </div>
         </div>
       </div>
-      <script>
-        document.getElementById('close-sidebar').addEventListener('click', function() {
-          window.parent.postMessage({ type: 'flowstate-close' }, '*');
-        });
-      </script>
     </body>
     </html>
   `;
@@ -350,14 +431,12 @@ function createSidebarHTML(
  * Creates the floating activation button
  */
 function createFloatingButton(): HTMLElement {
-  // Remove existing button if present
   const existing = document.getElementById("flowstate-float-btn");
   if (existing) existing.remove();
 
   const button = document.createElement("div");
   button.id = "flowstate-float-btn";
 
-  // Use inline styles to avoid any CSS conflicts
   button.style.cssText = `
     position: fixed !important;
     bottom: 24px !important;
@@ -383,7 +462,6 @@ function createFloatingButton(): HTMLElement {
   button.innerHTML = "🌊";
   button.title = "Open FlowState Accessibility Helper";
 
-  // Hover effects
   button.addEventListener("mouseenter", () => {
     button.style.transform = "scale(1.1)";
     button.style.boxShadow = "0 6px 24px rgba(99, 102, 241, 0.6)";
@@ -394,7 +472,6 @@ function createFloatingButton(): HTMLElement {
     button.style.boxShadow = "0 4px 20px rgba(99, 102, 241, 0.5)";
   });
 
-  // Click handler
   button.addEventListener("click", toggleSidebar);
 
   document.body.appendChild(button);
@@ -407,14 +484,12 @@ function createFloatingButton(): HTMLElement {
  * Creates the sidebar iframe
  */
 function createSidebar(): HTMLIFrameElement {
-  // Remove existing sidebar if present
   const existing = document.getElementById("flowstate-sidebar");
   if (existing) existing.remove();
 
   const iframe = document.createElement("iframe");
   iframe.id = "flowstate-sidebar";
 
-  // Critical: Use inline styles with !important to override any page styles
   iframe.style.cssText = `
     position: fixed !important;
     top: 0 !important;
@@ -441,10 +516,6 @@ function createSidebar(): HTMLIFrameElement {
     overflow: visible !important;
   `;
 
-  // Set sandbox to allow scripts but isolate from parent
-  iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
-
-  // Write content to iframe
   document.body.appendChild(iframe);
 
   const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -452,10 +523,54 @@ function createSidebar(): HTMLIFrameElement {
     iframeDoc.open();
     iframeDoc.write(createSidebarHTML());
     iframeDoc.close();
+
+    // Set up event listeners on iframe document after content is loaded
+    setupIframeEventListeners(iframe);
   }
 
   sidebarFrame = iframe;
   return iframe;
+}
+
+/**
+ * Set up event listeners on iframe content (CSP-safe approach)
+ */
+function setupIframeEventListeners(iframe: HTMLIFrameElement) {
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!iframeDoc) return;
+
+  // Use event delegation on the document
+  iframeDoc.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    const actionEl = target.closest("[data-flowstate-action]");
+
+    if (actionEl) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const action = actionEl.getAttribute("data-flowstate-action");
+      const selector = actionEl.getAttribute("data-flowstate-selector");
+
+      console.log("[FlowState iframe] Action clicked:", action);
+
+      // Handle actions directly
+      if (action === "close") {
+        closeSidebar();
+      } else if (action === "refresh") {
+        runAnalysis();
+      } else if (action === "scroll-to" && selector) {
+        scrollToElement(selector);
+      } else if (action === "toggle-log") {
+        const content = actionEl.nextElementSibling as HTMLElement;
+        if (content) {
+          content.style.display =
+            content.style.display === "none" ? "block" : "none";
+        }
+      }
+    }
+  });
+
+  console.log("[FlowState] Iframe event listeners set up");
 }
 
 /**
@@ -464,15 +579,12 @@ function createSidebar(): HTMLIFrameElement {
 function openSidebar() {
   if (isSidebarOpen) return;
 
-  // Create sidebar if it doesn't exist
   if (!sidebarFrame) {
     createSidebar();
   }
 
-  // Animate page content to make room
   wrapPageContent();
 
-  // Small delay to ensure DOM is ready
   requestAnimationFrame(() => {
     if (sidebarFrame) {
       sidebarFrame.style.right = "0px";
@@ -480,15 +592,12 @@ function openSidebar() {
     if (pageWrapper) {
       pageWrapper.style.marginRight = `${SIDEBAR_WIDTH}px`;
     }
-    // Move floating button
     if (floatingButton) {
       floatingButton.style.right = `${SIDEBAR_WIDTH + 24}px`;
     }
   });
 
   isSidebarOpen = true;
-
-  // Start analysis
   runAnalysis();
 }
 
@@ -512,7 +621,6 @@ function closeSidebar() {
 
   isSidebarOpen = false;
 
-  // Remove sidebar after animation
   setTimeout(() => {
     if (!isSidebarOpen && sidebarFrame) {
       sidebarFrame.remove();
@@ -537,9 +645,8 @@ function toggleSidebar() {
  * Wraps page content to enable smooth margin animation
  */
 function wrapPageContent() {
-  if (pageWrapper) return; // Already wrapped
+  if (pageWrapper) return;
 
-  // Apply transition to body for margin change
   document.body.style.transition = `margin-right ${ANIMATION_DURATION}ms ease`;
   document.body.style.marginRight = "0px";
   document.documentElement.style.overflow = "auto";
@@ -559,7 +666,7 @@ function unwrapPageContent() {
 }
 
 /**
- * Updates sidebar content
+ * Updates sidebar content and re-attaches event listeners
  */
 function updateSidebarContent(html: string) {
   if (!sidebarFrame) return;
@@ -570,6 +677,7 @@ function updateSidebarContent(html: string) {
 
   if (contentEl) {
     contentEl.innerHTML = html;
+    // Event listeners are already set up via delegation, no need to reattach
   }
 }
 
@@ -586,7 +694,6 @@ function escapeHtml(text: string): string {
  * Formats the summary as HTML
  */
 function formatSummaryHTML(summary: string): string {
-  // Convert markdown-like formatting to HTML
   let html = escapeHtml(summary);
 
   // Headers
@@ -596,69 +703,200 @@ function formatSummaryHTML(summary: string): string {
   // Bold
   html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
-  // Blockquotes (lines starting with >)
+  // Blockquotes
   html = html.replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>");
 
   // List items
   html = html.replace(/^• (.+)$/gm, "<li>$1</li>");
   html = html.replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>");
 
-  // Paragraphs (wrap remaining text blocks)
+  // Paragraphs
   html = html.replace(/^([^<\n].+)$/gm, "<p>$1</p>");
 
-  // Clean up empty paragraphs
+  // Clean up
   html = html.replace(/<p><\/p>/g, "");
 
   return html;
 }
 
 /**
- * Runs the page analysis
+ * Generates unique selector for an element
  */
-async function runAnalysis() {
+function generateSelector(el: Element): string {
+  if (el.id) return `#${CSS.escape(el.id)}`;
+
+  const tag = el.tagName.toLowerCase();
+  const classes = Array.from(el.classList)
+    .slice(0, 2)
+    .map((c) => `.${CSS.escape(c)}`)
+    .join("");
+
+  if (classes) return `${tag}${classes}`;
+
+  // Fallback to nth-child
+  const parent = el.parentElement;
+  if (parent) {
+    const siblings = Array.from(parent.children).filter(
+      (c) => c.tagName === el.tagName,
+    );
+    const index = siblings.indexOf(el) + 1;
+    return `${tag}:nth-of-type(${index})`;
+  }
+
+  return tag;
+}
+
+/**
+ * Renders the CTAs section
+ */
+function renderCTAsSection(actions: ParsedActions | null): string {
+  if (!actions) return "";
+
+  const { primaryActions, actions: allActions } = actions;
+
+  // Get primary and some secondary actions
+  const ctasToShow = [
+    ...primaryActions,
+    ...allActions
+      .filter(
+        (a) => a.importance !== "primary" && a.importance !== "navigation",
+      )
+      .slice(0, 5),
+  ].slice(0, 10);
+
+  if (ctasToShow.length === 0) return "";
+
+  const ctaItems = ctasToShow
+    .map((action) => {
+      const isPrimary = action.importance === "primary";
+      const ctaClass = isPrimary ? "primary-cta" : "secondary-cta";
+
+      // Try to find the element and get a selector
+      let selector = "";
+      try {
+        const elements = document.querySelectorAll(
+          action.type === "button"
+            ? 'button, [role="button"], input[type="submit"]'
+            : action.type === "link"
+              ? "a"
+              : "*",
+        );
+        for (const el of elements) {
+          if (el.textContent?.trim().includes(action.label.slice(0, 20))) {
+            selector = generateSelector(el);
+            break;
+          }
+        }
+      } catch (e) {
+        // Selector generation failed, skip
+      }
+
+      const dataAttrs = selector
+        ? `data-flowstate-action="scroll-to" data-flowstate-selector="${escapeHtml(selector)}"`
+        : "";
+
+      return `
+      <div class="cta-item ${ctaClass}" ${dataAttrs} style="cursor: ${selector ? "pointer" : "default"}">
+        <div class="cta-label">${escapeHtml(action.label)}</div>
+        <div class="cta-type">${action.type}${action.disabled ? " • disabled" : ""}</div>
+        ${selector ? '<div class="cta-hint">Click to scroll to this element</div>' : ""}
+      </div>
+    `;
+    })
+    .join("");
+
+  return `
+    <div class="cta-section">
+      <div class="cta-section-title">
+        🎯 Actions on This Page
+      </div>
+      ${ctaItems}
+    </div>
+  `;
+}
+
+/**
+ * Scrolls to and highlights an element
+ */
+function scrollToElement(selector: string) {
+  try {
+    const el = document.querySelector(selector);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // Highlight briefly
+      const originalOutline = (el as HTMLElement).style.outline;
+      const originalTransition = (el as HTMLElement).style.transition;
+
+      (el as HTMLElement).style.transition = "outline 0.3s ease";
+      (el as HTMLElement).style.outline = "3px solid #6366f1";
+
+      setTimeout(() => {
+        (el as HTMLElement).style.outline = originalOutline;
+        setTimeout(() => {
+          (el as HTMLElement).style.transition = originalTransition;
+        }, 300);
+      }, 2000);
+    }
+  } catch (e) {
+    console.error("[FlowState] Failed to scroll to element:", e);
+  }
+}
+
+/**
+ * Runs the page analysis with retry logic
+ */
+async function runAnalysis(retryCount = 0) {
+  const MAX_RETRIES = 2;
+
   updateSidebarContent(`
     <div class="status-card loading">
       <div class="spinner"></div>
-      <div class="status-text">Analyzing page structure...</div>
+      <div class="status-text" id="status-text">Analyzing page structure...</div>
     </div>
   `);
 
   try {
-    // Clone document for parsing (Readability modifies the DOM)
+    // Clone document for parsing
     const docClone = document.cloneNode(true) as Document;
 
-    // Parse content
-    updateSidebarContent(`
-      <div class="status-card loading">
-        <div class="spinner"></div>
-        <div class="status-text">Extracting page content...</div>
-      </div>
-    `);
+    // Update status
+    const updateStatus = (text: string) => {
+      if (!sidebarFrame) return;
+      const statusEl =
+        sidebarFrame.contentDocument?.getElementById("status-text");
+      if (statusEl) statusEl.textContent = text;
+    };
+
+    updateStatus("Extracting page content...");
 
     const pageContent = parseTextContent(docClone as unknown as HTMLDocument);
     const parsedActions = parseActions(document as unknown as HTMLDocument);
+    lastParsedActions = parsedActions;
 
-    // Show parse results first
+    if (!pageContent) {
+      throw new Error("Failed to parse page content");
+    }
+
+    // Show initial parse results
     let parseResultsHTML = '<div class="parse-results">';
 
-    if (pageContent) {
-      parseResultsHTML += `
-        <div class="parse-section">
-          <div class="parse-section-title">📄 Page Info</div>
-          <div class="action-item">
-            <div class="label">${escapeHtml(pageContent.title || "Untitled")}</div>
-            <div class="meta">${pageContent.length || 0} characters extracted</div>
-          </div>
+    parseResultsHTML += `
+      <div class="parse-section">
+        <div class="parse-section-title">📄 Page Info</div>
+        <div class="action-item">
+          <div class="label">${escapeHtml(pageContent.title || "Untitled")}</div>
+          <div class="meta">${pageContent.length || 0} characters extracted</div>
         </div>
-      `;
-    }
+      </div>
+    `;
 
     if (parsedActions && parsedActions.primaryActions.length > 0) {
       parseResultsHTML += `
         <div class="parse-section">
           <div class="parse-section-title">🎯 Primary Actions Found (${parsedActions.primaryActions.length})</div>
           ${parsedActions.primaryActions
-            .slice(0, 5)
+            .slice(0, 3)
             .map(
               (a) => `
             <div class="action-item">
@@ -666,67 +904,68 @@ async function runAnalysis() {
               <div class="meta">
                 <span class="badge ${a.importance}">${a.importance}</span>
                 ${a.type}
-                ${a.disabled ? " • disabled" : ""}
               </div>
             </div>
           `,
             )
             .join("")}
-          ${parsedActions.primaryActions.length > 5 ? `<div class="meta">...and ${parsedActions.primaryActions.length - 5} more</div>` : ""}
         </div>
       `;
     }
 
     parseResultsHTML += "</div>";
 
-    // Show loading state for AI
+    // Show loading for AI
     updateSidebarContent(`
       <div class="status-card loading">
         <div class="spinner"></div>
-        <div class="status-text">Running AI agents...</div>
+        <div class="status-text" id="status-text">Running AI agents...</div>
         <div class="status-text" style="font-size: 12px; margin-top: 8px;">This may take 30-60 seconds</div>
       </div>
       ${parseResultsHTML}
     `);
 
-    // Run AI summary using browser-compatible agents
+    // Run AI summary
     const { summarizePage } = await import("./agents");
 
-    const result = await summarizePage(pageContent!, parsedActions, {
+    const result = await summarizePage(pageContent, parsedActions, {
       verbose: true,
-      onProgress: (node, _state) => {
-        // Update status as agents complete
+      onProgress: (node) => {
         const agentNames: Record<string, string> = {
-          navigator: "📍 Navigator analyzed page structure",
-          security: "🛡️ Security Sentinel checked for risks",
-          compassionate_writer: "💝 Compassionate Writer drafted summary",
-          technical_writer: "📋 Technical Writer drafted summary",
-          arbiter: "⚖️ Arbiter merged summaries",
-          guardian: "✅ Guardian reviewing quality",
-          assemble: "📝 Assembling final output",
+          navigator: "📍 Navigator analyzing...",
+          security: "🛡️ Security check...",
+          compassionate_writer: "💝 Writing summary...",
+          technical_writer: "📋 Writing summary...",
+          arbiter: "⚖️ Merging results...",
+          guardian: "✅ Quality review...",
+          assemble: "📝 Finishing up...",
         };
-
-        const statusText = agentNames[node] || `Processing: ${node}`;
-
-        // Only update the status text, keep the rest
-        const statusEl =
-          sidebarFrame?.contentDocument?.querySelector(".status-text");
-        if (statusEl) {
-          statusEl.textContent = statusText;
-        }
+        updateStatus(agentNames[node] || `Processing: ${node}`);
       },
     });
 
-    // Show final result
+    // Check for critical errors
+    if (
+      !result.summary ||
+      result.summary.includes("Unable to generate summary")
+    ) {
+      throw new Error(result.errors.join("; ") || "Failed to generate summary");
+    }
+
+    // Render final result
     const summaryHTML = formatSummaryHTML(result.summary);
+    const ctasHTML = renderCTAsSection(parsedActions);
 
     let errorsHTML = "";
     if (result.errors.length > 0) {
       errorsHTML = `
-        <div class="status-card" style="background: #3f1f1f; border: 1px solid #7f1d1d;">
-          <div style="color: #f87171; font-weight: 500; margin-bottom: 8px;">⚠️ Some issues occurred:</div>
-          <ul style="color: #fca5a5; font-size: 12px; margin-left: 16px;">
-            ${result.errors.map((e) => `<li>${escapeHtml(e)}</li>`).join("")}
+        <div class="error-card">
+          <div class="error-title">⚠️ Some issues occurred:</div>
+          <ul class="error-message" style="margin-left: 16px;">
+            ${result.errors
+              .slice(0, 3)
+              .map((e) => `<li>${escapeHtml(e)}</li>`)
+              .join("")}
           </ul>
         </div>
       `;
@@ -737,8 +976,9 @@ async function runAnalysis() {
       <div class="summary-content">
         ${summaryHTML}
       </div>
+      ${ctasHTML}
       <div class="agent-log">
-        <div class="agent-log-title" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+        <div class="agent-log-title" data-flowstate-action="toggle-log" style="cursor: pointer;">
           📋 Agent Communication Log (${result.communicationLog.length} entries - click to expand)
         </div>
         <div class="agent-log-content" style="display: none;">
@@ -746,37 +986,79 @@ async function runAnalysis() {
         </div>
       </div>
       <div class="action-buttons">
-        <button class="action-btn primary" onclick="window.parent.postMessage({type:'flowstate-refresh'},'*')">
+        <button class="action-btn primary" data-flowstate-action="refresh">
           🔄 Re-analyze
         </button>
-        <button class="action-btn secondary" onclick="window.parent.postMessage({type:'flowstate-close'},'*')">
+        <button class="action-btn secondary" data-flowstate-action="close">
           Close
         </button>
       </div>
     `);
   } catch (error) {
     console.error("[FlowState] Analysis error:", error);
+
+    const errorMessage = String(error);
+    const isRetryable =
+      errorMessage.includes("fetch") ||
+      errorMessage.includes("network") ||
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("API");
+
+    if (isRetryable && retryCount < MAX_RETRIES) {
+      updateSidebarContent(`
+        <div class="status-card loading">
+          <div class="spinner"></div>
+          <div class="status-text">Retrying... (attempt ${retryCount + 2}/${MAX_RETRIES + 1})</div>
+        </div>
+      `);
+
+      setTimeout(() => runAnalysis(retryCount + 1), 2000);
+      return;
+    }
+
+    // Show error with helpful message
+    let helpText = "";
+    if (errorMessage.includes("API") || errorMessage.includes("key")) {
+      helpText = `
+        <div class="retry-hint">
+          💡 Make sure your OpenRouter API key is valid and has credits.
+        </div>
+      `;
+    } else if (
+      errorMessage.includes("fetch") ||
+      errorMessage.includes("network")
+    ) {
+      helpText = `
+        <div class="retry-hint">
+          💡 Check your internet connection and try again.
+        </div>
+      `;
+    }
+
+    // Still show CTAs even if AI failed
+    const ctasHTML = renderCTAsSection(lastParsedActions);
+
     updateSidebarContent(`
-      <div class="status-card" style="background: #3f1f1f; border: 1px solid #7f1d1d;">
-        <div style="color: #f87171; font-weight: 500; margin-bottom: 8px;">❌ Analysis Failed</div>
-        <div class="status-text error">${escapeHtml(String(error))}</div>
-        ${
-          String(error).includes("API")
-            ? `
-          <div style="margin-top: 12px; padding: 12px; background: #1e293b; border-radius: 8px;">
-            <div style="color: #fbbf24; font-size: 12px;">
-              💡 Make sure your OpenRouter API key is set correctly.
-            </div>
-          </div>
-        `
-            : ""
-        }
+      <div class="error-card">
+        <div class="error-title">❌ Analysis Failed</div>
+        <div class="error-message">${escapeHtml(errorMessage)}</div>
+        ${helpText}
       </div>
+      ${
+        ctasHTML
+          ? `
+        <div style="margin-top: 16px;">
+          <p style="color: #94a3b8; margin-bottom: 12px;">We found these actions on the page:</p>
+          ${ctasHTML}
+        </div>
+      `
+          : ""
+      }
       <div class="action-buttons">
-        <button class="action-btn primary" onclick="window.parent.postMessage({type:'flowstate-refresh'},'*')">
+        <button class="action-btn primary" data-flowstate-action="refresh">
           🔄 Try Again
         </button>
-        <button class="action-btn secondary" onclick="window.parent.postMessage({type:'flowstate-close'},'*')">
+        <button class="action-btn secondary" data-flowstate-action="close">
           Close
         </button>
       </div>
@@ -785,53 +1067,35 @@ async function runAnalysis() {
 }
 
 /**
- * Handle messages from sidebar iframe
+ * Handle messages from sidebar iframe (kept for potential future use)
  */
 function handleMessage(event: MessageEvent) {
-  if (event.data?.type === "flowstate-close") {
-    closeSidebar();
-  } else if (event.data?.type === "flowstate-refresh") {
-    runAnalysis();
+  // Check if this is a FlowState message
+  const { type, selector } = event.data || {};
+
+  if (!type || !type.startsWith("flowstate-")) return;
+
+  console.log("[FlowState] Received message:", type);
+
+  switch (type) {
+    case "flowstate-close":
+      console.log("[FlowState] Closing sidebar");
+      closeSidebar();
+      break;
+    case "flowstate-refresh":
+      console.log("[FlowState] Refreshing analysis");
+      runAnalysis();
+      break;
+    case "flowstate-scroll-to":
+      if (selector) {
+        scrollToElement(selector);
+      }
+      break;
   }
 }
 
-/**
- * Initialize FlowState
- */
-function init() {
-  // Prevent double initialization
-  if (document.getElementById("flowstate-float-btn")) {
-    console.log("[FlowState] Already initialized");
-    return;
-  }
+// Initialize
+createFloatingButton();
 
-  console.log("[FlowState] Initializing...");
-
-  // Create floating button
-  createFloatingButton();
-
-  // Listen for messages from iframe
-  window.addEventListener("message", handleMessage);
-
-  // Listen for keyboard shortcut (Ctrl+Shift+F)
-  document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "f") {
-      e.preventDefault();
-      toggleSidebar();
-    }
-  });
-
-  console.log(
-    "[FlowState] Ready. Click the 🌊 button or press Ctrl+Shift+F to open.",
-  );
-}
-
-// Initialize when DOM is ready
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
-}
-
-// Export for external use
-export { openSidebar, closeSidebar, toggleSidebar, runAnalysis };
+// Message listener
+window.addEventListener("message", handleMessage);

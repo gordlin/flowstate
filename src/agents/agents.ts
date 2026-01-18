@@ -34,6 +34,7 @@ function formatActions(state: AgentState): string {
 }
 
 function formatCTAs(ctas: IdentifiedCTA[]): string {
+  if (!ctas || ctas.length === 0) return "No CTAs identified";
   return ctas
     .map((c) => `- "${c.label}" [${c.importance}]: ${c.purpose}`)
     .join("\n");
@@ -49,7 +50,7 @@ export async function navigatorAgent(
 
   const humanPrompt = prompts.human
     .replace("{title}", state.pageContent.title || "Untitled")
-    .replace("{content}", state.pageContent.textContent?.slice(0, 8000) || "")
+    .replace("{content}", (state.pageContent.textContent || "").slice(0, 8000))
     .replace("{actions}", formatActions(state));
 
   const logs: CommunicationEntry[] = [
@@ -68,7 +69,10 @@ export async function navigatorAgent(
       { role: "user", content: humanPrompt },
     ];
 
-    const response = await callLLM(messages, { temperature: 0.2 });
+    const response = await callLLM(messages, {
+      temperature: 0.2,
+      jsonMode: true,
+    });
     const parsed = parseJsonResponse<{
       pageType: PageStructure["pageType"];
       mainPurpose: string;
@@ -94,22 +98,24 @@ export async function navigatorAgent(
     }
 
     // Match identified CTAs back to original actions
-    const identifiedCTAs: IdentifiedCTA[] = parsed.identifiedCTAs.map((cta) => {
-      const matchingAction = state.parsedActions?.actions.find(
-        (a) =>
-          a.label.toLowerCase().includes(cta.label.toLowerCase()) ||
-          cta.label.toLowerCase().includes(a.label.toLowerCase()),
-      );
-      return {
-        ...cta,
-        originalAction: matchingAction || {
-          type: "button" as const,
-          label: cta.label,
-          disabled: false,
-          importance: "unknown" as const,
-        },
-      };
-    });
+    const identifiedCTAs: IdentifiedCTA[] = (parsed.identifiedCTAs || []).map(
+      (cta) => {
+        const matchingAction = state.parsedActions?.actions.find(
+          (a) =>
+            a.label.toLowerCase().includes(cta.label.toLowerCase()) ||
+            cta.label.toLowerCase().includes(a.label.toLowerCase()),
+        );
+        return {
+          ...cta,
+          originalAction: matchingAction || {
+            type: "button" as const,
+            label: cta.label,
+            disabled: false,
+            importance: "unknown" as const,
+          },
+        };
+      },
+    );
 
     logs.push(
       createLogEntry(
@@ -123,10 +129,10 @@ export async function navigatorAgent(
 
     return {
       pageStructure: {
-        pageType: parsed.pageType,
-        mainPurpose: parsed.mainPurpose,
-        complexity: parsed.complexity,
-        sections: parsed.sections,
+        pageType: parsed.pageType || "unknown",
+        mainPurpose: parsed.mainPurpose || "Unknown purpose",
+        complexity: parsed.complexity || "moderate",
+        sections: parsed.sections || [],
       },
       identifiedCTAs,
       communicationLog: logs,
@@ -152,7 +158,7 @@ export async function securitySentinelAgent(
 
   const humanPrompt = prompts.human
     .replace("{pageStructure}", JSON.stringify(state.pageStructure, null, 2))
-    .replace("{content}", state.pageContent.textContent?.slice(0, 8000) || "")
+    .replace("{content}", (state.pageContent.textContent || "").slice(0, 8000))
     .replace("{actions}", formatCTAs(state.identifiedCTAs));
 
   const logs: CommunicationEntry[] = [
@@ -171,7 +177,10 @@ export async function securitySentinelAgent(
       { role: "user", content: humanPrompt },
     ];
 
-    const response = await callLLM(messages, { temperature: 0.1 });
+    const response = await callLLM(messages, {
+      temperature: 0.1,
+      jsonMode: true,
+    });
     const parsed = parseJsonResponse<SecurityAnalysis>(response.content);
 
     if (!parsed) {
@@ -203,12 +212,18 @@ export async function securitySentinelAgent(
         "compassionate-writer",
         "output",
         `Security analysis complete. Risk level: ${parsed.riskLevel}`,
-        `Found ${parsed.darkPatterns.length} dark patterns, ${parsed.financialActions.length} financial actions`,
+        `Found ${parsed.darkPatterns?.length || 0} dark patterns, ${parsed.financialActions?.length || 0} financial actions`,
       ),
     );
 
     return {
-      securityAnalysis: parsed,
+      securityAnalysis: {
+        riskLevel: parsed.riskLevel || "low",
+        financialActions: parsed.financialActions || [],
+        dataCollectionWarnings: parsed.dataCollectionWarnings || [],
+        darkPatterns: parsed.darkPatterns || [],
+        recommendations: parsed.recommendations || [],
+      },
       communicationLog: logs,
     };
   } catch (error) {
@@ -218,6 +233,13 @@ export async function securitySentinelAgent(
     return {
       communicationLog: logs,
       errors: [`Security Sentinel error: ${error}`],
+      securityAnalysis: {
+        riskLevel: "medium",
+        financialActions: [],
+        dataCollectionWarnings: [],
+        darkPatterns: [],
+        recommendations: ["Security analysis failed - proceed with caution"],
+      },
     };
   }
 }
@@ -238,7 +260,7 @@ export async function compassionateWriterAgent(
       "{securityAnalysis}",
       JSON.stringify(state.securityAnalysis, null, 2),
     )
-    .replace("{content}", state.pageContent.textContent?.slice(0, 6000) || "")
+    .replace("{content}", (state.pageContent.textContent || "").slice(0, 6000))
     .replace("{ctas}", formatCTAs(state.identifiedCTAs));
 
   const logs: CommunicationEntry[] = [
@@ -257,7 +279,10 @@ export async function compassionateWriterAgent(
       { role: "user", content: humanPrompt },
     ];
 
-    const response = await callLLM(messages, { temperature: 0.5 });
+    const response = await callLLM(messages, {
+      temperature: 0.5,
+      jsonMode: true,
+    });
     const parsed = parseJsonResponse<Omit<WriterOutput, "writerId">>(
       response.content,
     );
@@ -277,15 +302,24 @@ export async function compassionateWriterAgent(
       };
     }
 
-    const writerOutput: WriterOutput = { ...parsed, writerId: "compassionate" };
+    const writerOutput: WriterOutput = {
+      writerId: "compassionate",
+      title: parsed.title || "Page Summary",
+      summary: parsed.summary || "",
+      keyPoints: parsed.keyPoints || [],
+      legalNotes: parsed.legalNotes || [],
+      warnings: parsed.warnings || [],
+      tone: parsed.tone || "warm",
+      reasoning: parsed.reasoning || "",
+    };
 
     logs.push(
       createLogEntry(
         "compassionate-writer",
         "arbiter",
         "output",
-        `Completed compassionate summary: "${parsed.title}"`,
-        `Tone: ${parsed.tone}. Reasoning: ${parsed.reasoning}`,
+        `Completed compassionate summary: "${writerOutput.title}"`,
+        `Tone: ${writerOutput.tone}`,
       ),
     );
 
@@ -325,7 +359,7 @@ export async function technicalWriterAgent(
       "{securityAnalysis}",
       JSON.stringify(state.securityAnalysis, null, 2),
     )
-    .replace("{content}", state.pageContent.textContent?.slice(0, 6000) || "")
+    .replace("{content}", (state.pageContent.textContent || "").slice(0, 6000))
     .replace("{ctas}", formatCTAs(state.identifiedCTAs));
 
   const logs: CommunicationEntry[] = [
@@ -344,7 +378,10 @@ export async function technicalWriterAgent(
       { role: "user", content: humanPrompt },
     ];
 
-    const response = await callLLM(messages, { temperature: 0.2 });
+    const response = await callLLM(messages, {
+      temperature: 0.2,
+      jsonMode: true,
+    });
     const parsed = parseJsonResponse<Omit<WriterOutput, "writerId">>(
       response.content,
     );
@@ -364,15 +401,24 @@ export async function technicalWriterAgent(
       };
     }
 
-    const writerOutput: WriterOutput = { ...parsed, writerId: "technical" };
+    const writerOutput: WriterOutput = {
+      writerId: "technical",
+      title: parsed.title || "Page Summary",
+      summary: parsed.summary || "",
+      keyPoints: parsed.keyPoints || [],
+      legalNotes: parsed.legalNotes || [],
+      warnings: parsed.warnings || [],
+      tone: parsed.tone || "direct",
+      reasoning: parsed.reasoning || "",
+    };
 
     logs.push(
       createLogEntry(
         "technical-writer",
         "arbiter",
         "output",
-        `Completed technical summary: "${parsed.title}"`,
-        `Tone: ${parsed.tone}. Reasoning: ${parsed.reasoning}`,
+        `Completed technical summary: "${writerOutput.title}"`,
+        `Tone: ${writerOutput.tone}`,
       ),
     );
 
@@ -406,17 +452,57 @@ export async function arbiterAgent(
     (w) => w.writerId === "technical",
   );
 
-  if (!compassionateOutput || !technicalOutput) {
+  // If missing outputs, create fallback
+  if (!compassionateOutput && !technicalOutput) {
     return {
-      errors: ["Arbiter missing writer outputs"],
+      errors: ["Arbiter missing all writer outputs"],
       communicationLog: [
         createLogEntry(
           "arbiter",
           "state",
           "output",
-          "Missing writer outputs - cannot arbitrate",
+          "No writer outputs available",
         ),
       ],
+      arbiterDecision: {
+        chosenWriter: "merged",
+        reasoning: "No writer outputs available, using fallback",
+        disagreements: [],
+        mergedContent: {
+          title: state.pageContent.title || "Page Summary",
+          summary: state.pageContent.excerpt || "Unable to generate summary.",
+          keyPoints: [],
+          legalNotes: [],
+          warnings: [],
+        },
+      },
+    };
+  }
+
+  // If only one output, use it directly
+  if (!compassionateOutput || !technicalOutput) {
+    const available = compassionateOutput || technicalOutput!;
+    return {
+      communicationLog: [
+        createLogEntry(
+          "arbiter",
+          "state",
+          "decide",
+          `Using only available output: ${available.writerId}`,
+        ),
+      ],
+      arbiterDecision: {
+        chosenWriter: available.writerId as "compassionate" | "technical",
+        reasoning: "Only one writer output available",
+        disagreements: [],
+        mergedContent: {
+          title: available.title,
+          summary: available.summary,
+          keyPoints: available.keyPoints,
+          legalNotes: available.legalNotes,
+          warnings: available.warnings,
+        },
+      },
     };
   }
 
@@ -451,21 +537,35 @@ export async function arbiterAgent(
       { role: "user", content: humanPrompt },
     ];
 
-    const response = await callLLM(messages, { temperature: 0.3 });
+    const response = await callLLM(messages, {
+      temperature: 0.3,
+      jsonMode: true,
+    });
     const parsed = parseJsonResponse<ArbiterDecision>(response.content);
 
-    if (!parsed) {
+    if (!parsed || !parsed.mergedContent) {
       logs.push(
         createLogEntry(
           "arbiter",
           "state",
           "output",
-          "Failed to parse arbiter decision",
+          "Failed to parse, using compassionate output",
         ),
       );
       return {
         communicationLog: logs,
-        errors: ["Arbiter failed to parse response"],
+        arbiterDecision: {
+          chosenWriter: "compassionate",
+          reasoning: "Arbiter parse failed, defaulting to compassionate output",
+          disagreements: [],
+          mergedContent: {
+            title: compassionateOutput.title,
+            summary: compassionateOutput.summary,
+            keyPoints: compassionateOutput.keyPoints,
+            legalNotes: compassionateOutput.legalNotes,
+            warnings: compassionateOutput.warnings,
+          },
+        },
       };
     }
 
@@ -474,26 +574,24 @@ export async function arbiterAgent(
         "arbiter",
         "guardian",
         "decide",
-        `Decision: ${parsed.chosenWriter}. ${parsed.disagreements.length} disagreements resolved.`,
+        `Decision: ${parsed.chosenWriter}. ${parsed.disagreements?.length || 0} disagreements resolved.`,
         parsed.reasoning,
       ),
     );
 
-    // Log each disagreement resolution
-    parsed.disagreements.forEach((d, i) => {
-      logs.push(
-        createLogEntry(
-          "arbiter",
-          "state",
-          "decide",
-          `Disagreement ${i + 1}: ${d.topic}`,
-          `Resolution: ${d.resolution}`,
-        ),
-      );
-    });
-
     return {
-      arbiterDecision: parsed,
+      arbiterDecision: {
+        chosenWriter: parsed.chosenWriter || "merged",
+        reasoning: parsed.reasoning || "",
+        disagreements: parsed.disagreements || [],
+        mergedContent: {
+          title: parsed.mergedContent.title || "Summary",
+          summary: parsed.mergedContent.summary || "",
+          keyPoints: parsed.mergedContent.keyPoints || [],
+          legalNotes: parsed.mergedContent.legalNotes || [],
+          warnings: parsed.mergedContent.warnings || [],
+        },
+      },
       communicationLog: logs,
     };
   } catch (error) {
@@ -501,6 +599,18 @@ export async function arbiterAgent(
     return {
       communicationLog: logs,
       errors: [`Arbiter error: ${error}`],
+      arbiterDecision: {
+        chosenWriter: "compassionate",
+        reasoning: `Arbiter error: ${error}`,
+        disagreements: [],
+        mergedContent: {
+          title: compassionateOutput.title,
+          summary: compassionateOutput.summary,
+          keyPoints: compassionateOutput.keyPoints,
+          legalNotes: compassionateOutput.legalNotes,
+          warnings: compassionateOutput.warnings,
+        },
+      },
     };
   }
 }
@@ -517,13 +627,22 @@ export async function guardianAgent(
     return {
       errors: ["Guardian missing arbiter decision"],
       needsRevision: false,
+      qualityReport: {
+        isComplete: false,
+        missingCriticalInfo: ["No arbiter decision"],
+        oversimplifications: [],
+        securityConcernsAddressed: false,
+        accuracy: "low",
+        suggestions: [],
+        approved: false,
+      },
     };
   }
 
   const humanPrompt = prompts.human
     .replace(
       "{originalContent}",
-      state.pageContent.textContent?.slice(0, 6000) || "",
+      (state.pageContent.textContent || "").slice(0, 6000),
     )
     .replace(
       "{securityAnalysis}",
@@ -552,7 +671,10 @@ export async function guardianAgent(
       { role: "user", content: humanPrompt },
     ];
 
-    const response = await callLLM(messages, { temperature: 0.1 });
+    const response = await callLLM(messages, {
+      temperature: 0.1,
+      jsonMode: true,
+    });
     const parsed = parseJsonResponse<QualityReport>(response.content);
 
     if (!parsed) {
@@ -561,7 +683,7 @@ export async function guardianAgent(
           "guardian",
           "state",
           "output",
-          "Failed to parse quality report - approving with caution",
+          "Failed to parse - auto-approving",
         ),
       );
       return {
@@ -579,7 +701,7 @@ export async function guardianAgent(
       };
     }
 
-    const needsRevision = !parsed.approved && state.revisionCount < 2;
+    const needsRevision = parsed.approved === false && state.revisionCount < 2;
 
     if (parsed.approved) {
       logs.push(
@@ -588,8 +710,8 @@ export async function guardianAgent(
           "state",
           "approve",
           `✓ Approved. Accuracy: ${parsed.accuracy}`,
-          parsed.suggestions.length > 0
-            ? `Minor suggestions: ${parsed.suggestions.join("; ")}`
+          parsed.suggestions?.length > 0
+            ? `Suggestions: ${parsed.suggestions.join("; ")}`
             : undefined,
         ),
       );
@@ -599,14 +721,23 @@ export async function guardianAgent(
           "guardian",
           needsRevision ? "arbiter" : "state",
           "critique",
-          `✗ Not approved. Issues: ${parsed.missingCriticalInfo.length} missing, ${parsed.oversimplifications.length} oversimplified`,
+          `✗ Not approved. Missing: ${parsed.missingCriticalInfo?.length || 0}`,
           parsed.revisionInstructions,
         ),
       );
     }
 
     return {
-      qualityReport: parsed,
+      qualityReport: {
+        isComplete: parsed.isComplete ?? true,
+        missingCriticalInfo: parsed.missingCriticalInfo || [],
+        oversimplifications: parsed.oversimplifications || [],
+        securityConcernsAddressed: parsed.securityConcernsAddressed ?? true,
+        accuracy: parsed.accuracy || "medium",
+        suggestions: parsed.suggestions || [],
+        approved: parsed.approved ?? true,
+        revisionInstructions: parsed.revisionInstructions,
+      },
       needsRevision,
       revisionCount: state.revisionCount + 1,
       communicationLog: logs,
@@ -617,6 +748,15 @@ export async function guardianAgent(
       communicationLog: logs,
       errors: [`Guardian error: ${error}`],
       needsRevision: false,
+      qualityReport: {
+        isComplete: true,
+        missingCriticalInfo: [],
+        oversimplifications: [],
+        securityConcernsAddressed: true,
+        accuracy: "medium",
+        suggestions: [],
+        approved: true,
+      },
     };
   }
 }
@@ -648,8 +788,8 @@ export function assembleOutput(state: AgentState): Partial<AgentState> {
   const sections: string[] = [];
 
   // Title and summary
-  sections.push(`# ${mergedContent.title}`);
-  sections.push(mergedContent.summary);
+  sections.push(`# ${mergedContent.title || "Page Summary"}`);
+  sections.push(mergedContent.summary || "");
 
   // Security banner if high risk
   if (
@@ -663,13 +803,16 @@ export function assembleOutput(state: AgentState): Partial<AgentState> {
   }
 
   // Key points
-  if (mergedContent.keyPoints.length > 0) {
+  if (mergedContent.keyPoints && mergedContent.keyPoints.length > 0) {
     sections.push("\n## What You Need to Know");
     sections.push(mergedContent.keyPoints.map((p) => `• ${p}`).join("\n"));
   }
 
-  // Financial actions (from security analysis)
-  if (securityAnalysis?.financialActions.length) {
+  // Financial actions
+  if (
+    securityAnalysis?.financialActions &&
+    securityAnalysis.financialActions.length > 0
+  ) {
     sections.push("\n## 💰 Financial Actions");
     securityAnalysis.financialActions.forEach((fa) => {
       const reversibleNote = fa.reversible
@@ -680,7 +823,10 @@ export function assembleOutput(state: AgentState): Partial<AgentState> {
   }
 
   // Dark patterns warning
-  if (securityAnalysis?.darkPatterns.length) {
+  if (
+    securityAnalysis?.darkPatterns &&
+    securityAnalysis.darkPatterns.length > 0
+  ) {
     const severePatterns = securityAnalysis.darkPatterns.filter(
       (p) => p.severity === "severe",
     );
@@ -693,31 +839,35 @@ export function assembleOutput(state: AgentState): Partial<AgentState> {
   }
 
   // Important actions
-  const criticalCTAs = identifiedCTAs.filter(
-    (c) => c.importance === "critical",
-  );
-  if (criticalCTAs.length > 0) {
-    sections.push("\n## Main Actions");
-    criticalCTAs.forEach((cta) => {
-      sections.push(`• **${cta.label}**: ${cta.purpose}`);
-    });
+  if (identifiedCTAs && identifiedCTAs.length > 0) {
+    const criticalCTAs = identifiedCTAs.filter(
+      (c) => c.importance === "critical",
+    );
+    if (criticalCTAs.length > 0) {
+      sections.push("\n## Main Actions");
+      criticalCTAs.forEach((cta) => {
+        sections.push(`• **${cta.label}**: ${cta.purpose}`);
+      });
+    }
   }
 
   // Warnings
-  if (mergedContent.warnings.length > 0) {
+  if (mergedContent.warnings && mergedContent.warnings.length > 0) {
     sections.push("\n## ⚠️ Important Warnings");
     sections.push(mergedContent.warnings.map((w) => `• ${w}`).join("\n"));
   }
 
   // Legal notes
-  const highImportanceLegal = mergedContent.legalNotes.filter(
-    (n) => n.importance === "high",
-  );
-  if (highImportanceLegal.length > 0) {
-    sections.push("\n## Fine Print (Simplified)");
-    highImportanceLegal.forEach((note) => {
-      sections.push(`• ${note.simplified}`);
-    });
+  if (mergedContent.legalNotes && mergedContent.legalNotes.length > 0) {
+    const highImportanceLegal = mergedContent.legalNotes.filter(
+      (n) => n.importance === "high",
+    );
+    if (highImportanceLegal.length > 0) {
+      sections.push("\n## Fine Print (Simplified)");
+      highImportanceLegal.forEach((note) => {
+        sections.push(`• ${note.simplified}`);
+      });
+    }
   }
 
   // Quality indicator
